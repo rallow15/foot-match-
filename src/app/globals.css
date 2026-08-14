@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* =========================================================
+   Thème — identité foot premium, fond sombre (benchmark fifa.com)
+   ========================================================= */
+:root {
+  --ink: #070b14;          /* fond base bleu nuit / noir */
+  --ink-2: #0d1322;        /* surface élevée */
+  --ink-3: #131b30;        /* cartes / inputs */
+  --ink-4: #1c2740;        /* hover */
+  --line: #243150;         /* bordures */
+  --paper: #f4f6fb;        /* texte principal */
+  --muted: #8a96b3;        /* texte secondaire */
+  --muted-2: #5d6884;
+  --accent: #2ee06a;       /* vert vif — CTA "Contacter le club" */
+  --accent-strong: #1fb958;
+  --danger: #ff3b4e;       /* rouge — statuts / annulé */
+  --gold: #f2c14e;         /* badge vérifié / national */
+  --blue: #2d7df6;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-paper: var(--paper);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-danger: var(--danger);
+  --color-gold: var(--gold);
+  --color-blue: var(--blue);
+
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-sans), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(46, 224, 106, 0.06), transparent 60%),
+    radial-gradient(1000px 500px at 0% 0%, rgba(45, 125, 246, 0.07), transparent 55%),
+    var(--ink);
+}
+
+/* Typo condensée majuscule pour titres (style FIFA) */
+.font-display {
+  font-family: var(--font-display);
+}
+.eyebrow {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.headline {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  font-weight: 700;
+}
+
+/* Sélection */
+::selection {
+  background: var(--accent);
+  color: #04210f;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: var(--ink-4); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--line); }
+
+/* =========================================================
+   Composants utilitaires
+   ========================================================= */
+@layer components {
+  .btn,
+  .btn-accent,
+  .btn-ghost,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 font-display uppercase tracking-wide font-semibold
+           transition-all duration-200 select-none cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-accent {
+    @apply px-5 py-2.5 bg-accent text-[#04210f] rounded-sm
+           hover:bg-accent-strong hover:shadow-[0_0_24px_-4px_var(--accent)] active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply px-4 py-2.5 text-paper border border-line rounded-sm
+           hover:bg-ink-4 hover:border-muted-2;
+  }
+  .btn-danger {
+    @apply px-4 py-2.5 text-paper border border-line rounded-sm
+           hover:border-danger hover:text-danger;
+  }
+
+  .card {
+    @apply bg-ink-2 border border-line rounded-md overflow-hidden;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:border-muted-2 hover:-translate-y-0.5
+           hover:shadow-[0_10px_40px_-12px_rgba(0,0,0,0.7)];
+  }
+
+  .input {
+    @apply w-full bg-ink-3 border border-line rounded-sm px-3.5 py-2.5 text-paper
+           placeholder:text-muted-2 outline-none
+           focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
+  }
+  .label {
+    @apply block text-xs font-display uppercase tracking-wider text-muted mb-1.5;
+  }
+
+  .chip,
+  .chip-accent,
+  .chip-muted,
+  .chip-gold,
+  .chip-danger {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+  }
+  .chip-accent { @apply border-accent/40 bg-accent/10 text-accent; }
+  .chip-muted  { @apply border-line bg-ink-3 text-muted; }
+  .chip-gold   { @apply border-gold/40 bg-gold/10 text-gold; }
+  .chip-danger { @apply border-danger/40 bg-danger/10 text-danger; }
+
+  .stat-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+}
+
+/* Animations subtiles au scroll (reveal) */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  animation: rise 0.5s ease-out both;
+}
+
+/* Ligne d'accent sous les titres de section */
+.title-bar::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 3px;
+  margin-top: 12px;
+  background: var(--accent);
+}

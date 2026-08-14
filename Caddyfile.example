@@ -1,0 +1,15 @@
+# Reverse proxy Caddy + HTTPS automatique (Let's Encrypt).
+# Copier en /etc/caddy/Caddyfile sur le VPS, remplacer ton-domaine.fr,
+# puis : sudo systemctl reload caddy
+#
+# Caddy obtient et renouvelle le certificat tout seul — pas de Certbot à gérer.
+# Le pare-feu doit laisser passer 80 (challenge ACME) et 443.
+
+ton-domaine.fr {
+	encode zstd gzip
+	reverse_proxy localhost:3000
+
+	# Headers de sécurité complémentaires (Next.js en ajoute déjà via next.config.ts ;
+	# Caddy ne les écrase pas si Next les pose — on évite les doublons en laissant
+	# Next gérer CSP/HSTS/X-Frame-Options).
+}

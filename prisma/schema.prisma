@@ -1,0 +1,121 @@
+// Prisma schema — Plateforme de matchs amicaux entre clubs amateurs
+// Postgres (Supabase) en production ET en dev (mêmes migrations).
+// Note: pas d'enums natifs utilisés — les valeurs sont validées dans le code
+// (src/lib/referential.ts), ce qui garde le schéma portable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Club {
+  id                   String     @id @default(cuid())
+  nom                  String
+  ville                String
+  codePostal           String
+  latitude             Float
+  longitude            Float
+  ligue                String   // Ligue régionale FFF (ex. "Auvergne-Rhône-Alpes")
+  district             String   // District / sous-ligue FFF (ex. "Lyon-Rhône")
+  telephone            String
+  email                String     @unique
+  logoUrl              String?
+  licenceFichierUrl    String?
+  // en_attente | valide | refuse
+  statutVerification   String     @default("en_attente")
+  // reason text shown to club when refused
+  refusMotif           String?
+  passwordHash         String
+  // distinguishes a platform admin from a regular club
+  role                 String     @default("club") // club | admin
+  derniereActiviteAt   DateTime   @default(now())
+  createdAt            DateTime   @default(now())
+
+  equipes              Equipe[]
+  sessions             Session[]
+  annonces             Annonce[]   @relation("AnnoncePar")
+  contactsEmis         ContactLog[] @relation("Demandeur")
+  contactsRecus        ContactLog[] @relation("Destinataire")
+
+  @@index([statutVerification])
+  @@index([email])
+}
+
+model Equipe {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  // referential: see CATEGORIES in src/lib/referential.ts
+  categorie String
+  // nullable: see NIVEAUX_BY_CATEGORIE
+  niveau    String?
+
+  annonces  Annonce[]
+
+  @@index([clubId])
+  @@index([categorie])
+}
+
+model Annonce {
+  id              String   @id @default(cuid())
+  equipeId        String
+  equipe          Equipe   @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  clubId          String
+  club            Club     @relation("AnnoncePar", fields: [clubId], references: [id], onDelete: Cascade)
+  // ISO date yyyy-mm-dd
+  date            String
+  // HH:mm or plage "14:00-16:00"
+  heure           String
+  // domicile | exterieur | indifferent
+  domicileExterieur String
+  stadeDispo      Boolean  @default(false)
+  stadeNom        String?
+  stadeVille      String?
+  arbitreDispo    Boolean  @default(false)
+  niveauSouhaite  String?
+  note            String?
+  // ouvert | pourvu | annule
+  statut          String   @default("ouvert")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contacts        ContactLog[]
+
+  @@index([equipeId])
+  @@index([clubId])
+  @@index([statut])
+  @@index([date])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  // Hash SHA-256 du token (le cookie porte le token clair, la base n'en stocke
+  // que le hash : une fuite de base ne permet pas de détournement de session).
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+}
+
+model ContactLog {
+  id              String   @id @default(cuid())
+  annonceId       String
+  annonce         Annonce  @relation(fields: [annonceId], references: [id], onDelete: Cascade)
+  demandeurClubId String
+  demandeur       Club     @relation("Demandeur", fields: [demandeurClubId], references: [id], onDelete: Cascade)
+  destinataireId  String
+  destinataire    Club     @relation("Destinataire", fields: [destinataireId], references: [id], onDelete: Cascade)
+  message         String?
+  // contact shown to demandeur after request
+  createdAt       DateTime @default(now())
+
+  @@index([annonceId])
+  @@index([demandeurClubId])
+}
