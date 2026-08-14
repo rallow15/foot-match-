@@ -56,3 +56,4 @@ export const LOGIN_RATE_LIMIT: RateLimitOpts = { maxRequests: 5, windowMs: 60_00
 export const REGISTER_RATE_LIMIT: RateLimitOpts = { maxRequests: 3, windowMs: 60_000 }; // 3/min
 export const CONTACT_RATE_LIMIT: RateLimitOpts = { maxRequests: 5, windowMs: 60_000 }; // 5/min
 export const UPLOAD_RATE_LIMIT: RateLimitOpts = { maxRequests: 5, windowMs: 60_000 }; // 5/min
+export const PASSWORD_RESET_RATE_LIMIT: RateLimitOpts = { maxRequests: 3, windowMs: 600_000 }; // 3 / 10 min (anti email-bombing)

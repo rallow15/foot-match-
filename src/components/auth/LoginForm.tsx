@@ -23,6 +23,12 @@ export function LoginForm({ redirect }: { redirect?: string }) {
         </div>
       </div>
 
+      <div className="mt-3 text-right">
+        <Link href="/mot-de-passe-oublie" className="text-sm text-muted hover:text-accent hover:underline">
+          Mot de passe oublié ?
+        </Link>
+      </div>
+
       {redirect && <input type="hidden" name="redirect" value={redirect} />}
 
       {state?.error && (

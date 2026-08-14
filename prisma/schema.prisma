@@ -40,6 +40,7 @@ model Club {
   annonces             Annonce[]   @relation("AnnoncePar")
   contactsEmis         ContactLog[] @relation("Demandeur")
   contactsRecus        ContactLog[] @relation("Destinataire")
+  passwordResetTokens  PasswordResetToken[]
 
   @@index([statutVerification])
   @@index([email])
@@ -118,4 +119,20 @@ model ContactLog {
 
   @@index([annonceId])
   @@index([demandeurClubId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  // Hash SHA-256 du token (le lien email porte le token clair, la base n'en
+  // stocke que le hash : une fuite de base ne permet pas de réinitialiser un mot
+  // de passe). Même stratégie que Session.tokenHash.
+  tokenHash String   @unique
+  expiresAt DateTime              // now + 15 min
+  // Marqué à la consommation (usage unique) ; null tant que non utilisé.
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
 }

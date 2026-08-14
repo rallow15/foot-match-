@@ -51,3 +51,35 @@ ${data.message ? `Message du demandeur :\n${data.message}\n\n` : ""}Vous pouvez 
   }
   await t.sendMail({ from, to: data.to, subject, text });
 }
+
+export interface PasswordResetMailData {
+  to: string; // club demandeur
+  resetUrl: string; // lien signé (porte le token clair)
+}
+
+export async function sendPasswordResetEmail(data: PasswordResetMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const subject = "Réinitialisation de votre mot de passe — Matchs Amicaux";
+  const text = `Bonjour,
+
+Vous avez demandé la réinitialisation de votre mot de passe sur Matchs Amicaux.
+
+Cliquez sur le lien suivant pour choisir un nouveau mot de passe (valable 15 minutes) :
+${data.resetUrl}
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé.
+
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    // Pas de SMTP configuré : on logge côté serveur (visible en dev / logs Vercel).
+    console.log("\n[MAIL · fallback console · RESET] -------------------------");
+    console.log(`To: ${data.to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(text);
+    console.log("[MAIL] -------------------------------------------\n");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}

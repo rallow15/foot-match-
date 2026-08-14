@@ -18,14 +18,17 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-function newToken(): string {
+// Token opaque (32 octets aléatoires). Utilisé pour les sessions ET pour les
+// liens de réinitialisation de mot de passe : la base ne stocke jamais le
+// token clair, seulement son hash SHA-256.
+export function newOpaqueToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-// Hash du token de session (SHA-256). Le cookie porte le token clair, la base
-// n'en stocke que le hash : une fuite de base ne permet pas de rejouer les
-// sessions actives.
-function hashToken(token: string): string {
+// Hash SHA-256 d'un token opaque. Le support (cookie ou lien email) porte le
+// token clair, la base n'en stocke que le hash : une fuite de base ne permet
+// ni de rejouer les sessions actives, ni de forger un reset.
+export function hashOpaqueToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
@@ -36,10 +39,10 @@ export async function createSession(clubId: string): Promise<string> {
   // Suppression des sessions existantes pour ce club (anti-fixation de session)
   await prisma.session.deleteMany({ where: { clubId } }).catch(() => {});
 
-  const token = newToken();
+  const token = newOpaqueToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await prisma.session.create({
-    data: { clubId, tokenHash: hashToken(token), expiresAt },
+    data: { clubId, tokenHash: hashOpaqueToken(token), expiresAt },
   });
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
@@ -57,7 +60,7 @@ export async function getSession() {
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(token) },
+    where: { tokenHash: hashOpaqueToken(token) },
     include: { club: true },
   });
   if (!session) return null;
@@ -77,7 +80,7 @@ export async function logout(): Promise<void> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (token) {
-    await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } }).catch(() => {});
+    await prisma.session.deleteMany({ where: { tokenHash: hashOpaqueToken(token) } }).catch(() => {});
   }
   store.delete(SESSION_COOKIE);
 }

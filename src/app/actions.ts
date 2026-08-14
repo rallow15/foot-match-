@@ -8,14 +8,16 @@ import {
   createSession,
   getCurrentClub,
   hashPassword,
+  hashOpaqueToken,
+  newOpaqueToken,
   logout,
   touchActivity,
   verifyPassword,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification } from "@/lib/mail";
+import { sendContactNotification, sendPasswordResetEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -185,6 +187,86 @@ export async function logoutAction(): Promise<void> {
   await logout();
   revalidatePath("/");
   redirect("/");
+}
+
+/* ---------------- Mot de passe oublié ---------------- */
+
+// Durée de validité d'un lien de réinitialisation.
+const RESET_TOKEN_MINUTES = 15;
+
+// Réponse constante pour ne pas révéler si un email existe (anti-énumération).
+const RESET_REQUEST_OK = { ok: true as const };
+
+export async function requestPasswordResetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  // Rate limiting (anti email-bombing)
+  const ip = await getClientIp();
+  if (!rateLimit(ip, PASSWORD_RESET_RATE_LIMIT)) {
+    return { error: "Trop de demandes. Réessayez dans quelques minutes." };
+  }
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  // Même si l'email est invalide, on renvoie le message générique ok pour ne
+  // pas divulguer d'information sur les comptes existants.
+  if (!isValidEmail(email)) return RESET_REQUEST_OK;
+
+  const club = await prisma.club.findUnique({ where: { email } });
+  if (!club) return RESET_REQUEST_OK;
+
+  // Nettoyage opportuniste des tokens expirés de ce club (fire-and-forget)
+  await prisma.passwordResetToken
+    .deleteMany({ where: { clubId: club.id, expiresAt: { lt: new Date() } } })
+    .catch(() => {});
+
+  const token = newOpaqueToken();
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_MINUTES * 60 * 1000);
+  await prisma.passwordResetToken.create({
+    data: { clubId: club.id, tokenHash: hashOpaqueToken(token), expiresAt },
+  });
+
+  const appUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
+  const resetUrl = `${appUrl}/reset-password?token=${token}`;
+  // Envoi (ou fallback console si SMTP non configuré — utile en dev).
+  await sendPasswordResetEmail({ to: email, resetUrl }).catch(() => {});
+
+  // Message générique constant : ne révèle pas l'existence du compte.
+  return RESET_REQUEST_OK;
+}
+
+export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const token = String(formData.get("token") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (!token) return { error: "Lien invalide ou expiré." };
+  if (password !== confirm) return { error: "Les mots de passe ne correspondent pas." };
+  const pwCheck = validatePassword(password);
+  if (!pwCheck.valid) return { error: pwCheck.error! };
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashOpaqueToken(token) },
+    include: { club: true },
+  });
+  if (!record) return { error: "Lien invalide ou expiré." };
+  if (record.usedAt) {
+    return { error: "Ce lien a déjà été utilisé. Redemandez un nouveau lien de réinitialisation." };
+  }
+  if (record.expiresAt < new Date()) {
+    await prisma.passwordResetToken.delete({ where: { id: record.id } }).catch(() => {});
+    return { error: "Lien expiré. Redemandez un nouveau lien de réinitialisation." };
+  }
+
+  const newHash = await hashPassword(password);
+  await prisma.$transaction([
+    prisma.club.update({ where: { id: record.clubId }, data: { passwordHash: newHash } }),
+    // Marque le token comme utilisé (audit) — usage unique.
+    prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    // Invalide toutes les sessions du club : force la reconnexion et empêche
+    // une session volée de survivre au changement de mot de passe.
+    prisma.session.deleteMany({ where: { clubId: record.clubId } }),
+  ]);
+
+  revalidatePath("/login");
+  redirect("/login?reset=ok");
 }
 
 /* ---------------- Équipes ---------------- */
