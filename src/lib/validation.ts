@@ -36,6 +36,29 @@ export function isValidHeure(value: string): boolean {
   return false;
 }
 
+// Normalise un jeton d'heure saisi librement :
+//   "13"   -> "13:00"
+//   "9"    -> "09:00"
+//   "13h"  -> "13:00"
+//   "13h30"-> "13:30"
+// Les formats déjà valides (HH:mm) sont renvoyés tels quels ; les formats
+// non reconnus aussi (la validation isValidHeure tranchera ensuite).
+function normalizeTimeToken(tok: string): string {
+  const s = tok.trim().toLowerCase();
+  if (/^\d{1,2}$/.test(s)) return s.padStart(2, "0") + ":00";
+  const m = s.match(/^(\d{1,2})h(\d{1,2})?$/);
+  if (m) return m[1].padStart(2, "0") + ":" + (m[2] ? m[2].padStart(2, "0") : "00");
+  return s;
+}
+
+// Normalise une heure ou une plage (ex. "13-15" -> "13:00-15:00").
+export function normalizeHeure(raw: string): string {
+  const s = raw.trim();
+  if (!s) return s;
+  if (s.includes("-")) return s.split("-").map(normalizeTimeToken).join("-");
+  return normalizeTimeToken(s);
+}
+
 // --- Code postal français : 5 chiffres (01000–95999) ---
 export function isValidCodePostal(value: string): boolean {
   if (!/^\d{5}$/.test(value)) return false;

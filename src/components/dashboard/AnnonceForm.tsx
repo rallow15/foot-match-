@@ -7,6 +7,7 @@ import {
   type ActionState,
 } from "@/app/actions";
 import { niveauxForCategorie, DOM_EXT } from "@/lib/referential";
+import { normalizeHeure } from "@/lib/validation";
 
 interface EquipeLite {
   id: string;
@@ -90,8 +91,20 @@ export function AnnonceForm({ equipes, mode, annonceId, initial }: AnnonceFormPr
           <input id="date" name="date" type="date" required className="input" defaultValue={initial?.date ?? ""} />
         </div>
         <div>
-          <label className="label" htmlFor="heure">Horaire * <span className="text-muted-2 normal-case tracking-normal">(ex. 14:00 ou 14:00-16:00)</span></label>
-          <input id="heure" name="heure" required className="input" defaultValue={initial?.heure ?? ""} placeholder="14:00" />
+          <label className="label" htmlFor="heure">Horaire * <span className="text-muted-2 normal-case tracking-normal">(ex. 13, 14:00 ou 14:00-16:00)</span></label>
+          <input
+            id="heure"
+            name="heure"
+            required
+            className="input"
+            defaultValue={initial?.heure ?? ""}
+            placeholder="13 ou 14:00"
+            onBlur={(e) => {
+              // Normalisation immédiate : "13" -> "13:00", "13h30" -> "13:30"…
+              const n = normalizeHeure(e.target.value);
+              if (n !== e.target.value) e.target.value = n;
+            }}
+          />
         </div>
       </div>
 

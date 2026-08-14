@@ -30,6 +30,7 @@ import {
   isValidEmail,
   isValidHeure,
   isValidTelephone,
+  normalizeHeure,
   validateLength,
   validatePassword,
   LIMITS,
@@ -224,7 +225,7 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
 
   const equipeId = String(formData.get("equipeId") ?? "");
   const date = String(formData.get("date") ?? "");
-  const heure = String(formData.get("heure") ?? "").trim();
+  const heure = normalizeHeure(String(formData.get("heure") ?? ""));
   const dom = String(formData.get("domicileExterieur") ?? "");
   const stadeDispo = formData.get("stadeDispo") === "on";
   const stadeNom = String(formData.get("stadeNom") ?? "").trim();
@@ -234,7 +235,7 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
 
   if (!equipeId || !date || !heure) return { error: "Équipe, date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
-  if (!isValidHeure(heure)) return { error: "Horaire invalide (format HH:mm ou HH:mm-HH:mm)." };
+  if (!isValidHeure(heure)) return { error: "Horaire invalide (ex. 13, 14:00 ou 14:00-16:00)." };
   if (!DOM_EXT.includes(dom as never)) return { error: "Domicile/Extérieur invalide." };
   if (stadeDispo && !stadeNom) return { error: "Indiquez le nom du stade si le stade est disponible." };
   if (stadeNom) {
@@ -287,7 +288,7 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
   if (!annonce) return { error: "Annonce introuvable." };
 
   const date = String(formData.get("date") ?? "");
-  const heure = String(formData.get("heure") ?? "").trim();
+  const heure = normalizeHeure(String(formData.get("heure") ?? ""));
   const dom = String(formData.get("domicileExterieur") ?? "");
   const stadeDispo = formData.get("stadeDispo") === "on";
   const stadeNom = String(formData.get("stadeNom") ?? "").trim();
@@ -297,7 +298,7 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
 
   if (!date || !heure) return { error: "Date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
-  if (!isValidHeure(heure)) return { error: "Horaire invalide (format HH:mm ou HH:mm-HH:mm)." };
+  if (!isValidHeure(heure)) return { error: "Horaire invalide (ex. 13, 14:00 ou 14:00-16:00)." };
   if (!DOM_EXT.includes(dom as never)) return { error: "Domicile/Extérieur invalide." };
   if (stadeDispo && !stadeNom) return { error: "Indiquez le nom du stade si le stade est disponible." };
   if (stadeNom) {
