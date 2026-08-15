@@ -13,11 +13,12 @@ import {
   logout,
   touchActivity,
   verifyPassword,
+  verifyPasswordAgainstDummy,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification, sendPasswordResetEmail } from "@/lib/mail";
+import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -37,6 +38,7 @@ import {
   validatePassword,
   LIMITS,
 } from "@/lib/validation";
+import { todayISO } from "@/lib/utils";
 
 export type ActionState = {
   ok?: boolean;
@@ -68,6 +70,27 @@ async function getClientIp(): Promise<string> {
 }
 
 /* ---------------- Auth ---------------- */
+
+// Verrouillage temporaire du compte après N échecs consécutifs (anti brute-
+// force, y compris multi-IP : l'état est en base). Cf. schema.prisma
+// (failedLoginAttempts / lockedUntil sur Club).
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 15;
+
+// Valide qu'un chemin de redirection est bien interne (anti open-redirect).
+// On rejette :
+//  - ce qui ne commence pas par "/"
+//  - "//host" (autorité)
+//  - "/\host" : les navigateurs normalisent '\' en '/', donc "/\host" devient
+//    "//host" -> redirige vers host. C'est le contournement classique du test
+//    `!startsWith("//")`.
+//  - toute présence de ":" (bloque les schémas / "/http:..." / data:).
+function safeRedirectPath(value: string): string | null {
+  if (!value.startsWith("/")) return null;
+  if (value[1] === "/" || value[1] === "\\") return null;
+  if (value.includes(":")) return null;
+  return value;
+}
 
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting
@@ -106,6 +129,20 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   const pwCheck = validatePassword(password);
   if (!pwCheck.valid) return { error: pwCheck.error! };
 
+  // Pré-vérification de l'email AVANT l'upload de la licence : si un compte
+  // existe déjà, on échoue tôt sans stocker de fichier orphelin dans Supabase.
+  // (Une race reste possible -> le catch P2002 ci-dessous gère le cas résiduel.)
+  const existing = await prisma.club.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (existing) return { error: "Un compte existe déjà avec cet email." };
+
+  // Géocodage de la ville (avant l'upload, idem : on évite un fichier orphelin
+  // si la ville est introuvable).
+  const geo = (await geocode(`${ville} ${codePostal}`)) ?? (await geocode(ville));
+  if (!geo) return { error: "Ville introuvable. Vérifiez le nom et le code postal." };
+
   let licenceUrl: string | null = null;
   try {
     licenceUrl = await saveUpload(licence, "licence");
@@ -113,10 +150,6 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     return { error: (e as Error).message };
   }
   if (!licenceUrl) return { error: "La licence de dirigeant/éducateur est obligatoire." };
-
-  // Géocodage de la ville
-  const geo = (await geocode(`${ville} ${codePostal}`)) ?? (await geocode(ville));
-  if (!geo) return { error: "Ville introuvable. Vérifiez le nom et le code postal." };
 
   const hash = await hashPassword(password);
   try {
@@ -138,6 +171,10 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
       },
     });
     await createSession(club.id);
+
+    // Email de confirmation d'inscription (fire-and-forget : un souci SMTP
+    // ne doit pas faire échouer l'inscription, déjà persistée en base).
+    await sendRegistrationConfirmationEmail({ to: email, nom }).catch(() => {});
   } catch (e) {
     if ((e as { code?: string }).code === "P2002")
       return { error: "Un compte existe déjà avec cet email." };
@@ -165,21 +202,56 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   }
 
   const club = await prisma.club.findUnique({ where: { email } });
-  if (!club || !(await verifyPassword(password, club.passwordHash)))
+
+  // Verrouillage actif ? On vérifie AVANT le bcrypt pour ne rien laisser fuir
+  // (pas de timing différent, message identique à un compte bloqué).
+  const now = new Date();
+  if (club?.lockedUntil && club.lockedUntil > now) {
+    return { error: "Compte temporairement bloqué suite à plusieurs tentatives échouées. Réessayez plus tard." };
+  }
+  // Verrouillage expiré : on réarme le compteur avant de retenter.
+  if (club?.lockedUntil && club.lockedUntil <= now) {
+    await prisma.club
+      .update({ where: { id: club.id }, data: { failedLoginAttempts: 0, lockedUntil: null } })
+      .catch(() => {});
+  }
+
+  // Vérification du mot de passe. Si l'email n'existe pas, on exécute quand
+  // même un bcrypt factice pour égaliser le temps de réponse (anti-énumération
+  // par oracle de timing).
+  const passwordOk = club
+    ? await verifyPassword(password, club.passwordHash)
+    : await verifyPasswordAgainstDummy(password).then(() => false);
+
+  if (!club || !passwordOk) {
+    if (club) {
+      const attempts = (club.failedLoginAttempts ?? 0) + 1;
+      const lock = attempts >= MAX_FAILED_LOGINS;
+      await prisma.club
+        .update({
+          where: { id: club.id },
+          data: {
+            failedLoginAttempts: attempts,
+            lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000) : null,
+          },
+        })
+        .catch(() => {});
+    }
     return { error: "Identifiants incorrects." };
+  }
+
+  // Succès : on réinitialise le compteur d'échecs.
+  await prisma.club
+    .update({ where: { id: club.id }, data: { failedLoginAttempts: 0, lockedUntil: null } })
+    .catch(() => {});
 
   await createSession(club.id);
   revalidatePath("/");
 
   const redirectTo = String(formData.get("redirect") ?? "").trim();
-  // On n'accepte qu'un chemin interne : on refuse les URLs protocol-relatives
-  // (ex. "//evil.com") qui redirigeraient hors-site (open redirect).
-  const dest =
-    redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? redirectTo
-      : club.role === "admin"
-        ? "/admin"
-        : "/dashboard";
+  const fallback = club.role === "admin" ? "/admin" : "/dashboard";
+  // safeRedirectPath rejette les open-redirects (//host, /\host, schémas).
+  const dest = safeRedirectPath(redirectTo) ?? fallback;
   redirect(dest);
 }
 
@@ -233,6 +305,12 @@ export async function requestPasswordResetAction(_prev: ActionState, formData: F
 }
 
 export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  // Rate limiting (anti spam de tokens aléatoires -> DoS de lookups DB).
+  const ip = await getClientIp();
+  if (!rateLimit(ip, RESET_SUBMIT_RATE_LIMIT)) {
+    return { error: "Trop de tentatives. Réessayez dans un instant." };
+  }
+
   const token = String(formData.get("token") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
@@ -257,7 +335,17 @@ export async function resetPasswordAction(_prev: ActionState, formData: FormData
 
   const newHash = await hashPassword(password);
   await prisma.$transaction([
-    prisma.club.update({ where: { id: record.clubId }, data: { passwordHash: newHash } }),
+    prisma.club.update({
+      where: { id: record.clubId },
+      data: {
+        passwordHash: newHash,
+        // Réarme le verrouillage login : un utilisateur qui change son mot de
+        // passe (y compris depuis un compte temporairement verrouillé) doit
+        // pouvoir se reconnecter immédiatement.
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    }),
     // Marque le token comme utilisé (audit) — usage unique.
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
     // Invalide toutes les sessions du club : force la reconnexion et empêche
@@ -460,26 +548,47 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
     include: { equipe: true, club: true },
   });
   if (!annonce || annonce.statut !== "ouvert") return { error: "Annonce non disponible." };
+  // Auto-expiration : on ne contacte pas une annonce à date passée (anti
+  // annonces fantômes + anti-harcèlement sur des annonces périmées dont les
+  // coordonnées resteraient révélables).
+  if (annonce.date < todayISO()) return { error: "Cette annonce est expirée." };
   if (annonce.clubId === club.id) return { error: "Vous ne pouvez pas contacter votre propre annonce." };
 
-  await prisma.contactLog.create({
-    data: {
-      annonceId: annonce.id,
-      demandeurClubId: club.id,
-      destinataireId: annonce.clubId,
-      message: message || null,
-    },
-  });
-  await touchActivity(club.id);
+  // Idempotence : un même demandeur ne peut contacter une annonce qu'une seule
+  // fois. La contrainte @@unique([demandeurClubId, annonceId]) garantit
+  // l'atomicité (anti race) ; en cas de re-demande on ne renvoie PAS de mail
+  // (anti email-bombing du club annonceur) et on renvoie quand même les
+  // coordonnées déjà partagées.
+  let created = false;
+  try {
+    await prisma.contactLog.create({
+      data: {
+        annonceId: annonce.id,
+        demandeurClubId: club.id,
+        destinataireId: annonce.clubId,
+        message: message || null,
+      },
+    });
+    created = true;
+  } catch (e) {
+    if ((e as { code?: string }).code !== "P2002") throw e;
+  }
 
-  await sendContactNotification({
-    to: annonce.club.email,
-    annonceLabel: `${annonce.equipe.categorie} · ${annonce.date} · ${annonce.heure}`,
-    demandeurClub: club.nom,
-    demandeurEmail: club.email,
-    demandeurTelephone: club.telephone,
-    message: message || undefined,
-  });
+  if (created) {
+    await touchActivity(club.id);
+    // L'email est await (pour laisser le temps à l'envoi sur Vercel avant la
+    // fin de la fonction) mais son échec ne remonte pas à l'utilisateur : la
+    // mise en relation est déjà enregistrée en base, on ne doit pas la faire
+    // échouer pour une panne SMTP.
+    await sendContactNotification({
+      to: annonce.club.email,
+      annonceLabel: `${annonce.equipe.categorie} · ${annonce.date} · ${annonce.heure}`,
+      demandeurClub: club.nom,
+      demandeurEmail: club.email,
+      demandeurTelephone: club.telephone,
+      message: message || undefined,
+    }).catch(() => {});
+  }
 
   revalidatePath(`/annonces/${annonce.id}`);
   // Coordonnées du club annonceur révélées au demandeur uniquement après une
@@ -494,7 +603,15 @@ export async function adminValidateAction(formData: FormData): Promise<void> {
   const me = await getCurrentClub();
   if (!me || me.role !== "admin") return;
   const id = String(formData.get("id") ?? "");
+  // Récupère email + nom du club (role: club) pour l'email de notification.
+  const club = await prisma.club.findFirst({
+    where: { id, role: "club" },
+    select: { email: true, nom: true },
+  });
+  if (!club) return;
   await prisma.club.updateMany({ where: { id, role: "club" }, data: { statutVerification: "valide", refusMotif: null } });
+  // Email "compte validé" (fire-and-forget : la validation est déjà faite).
+  await sendAccountValidatedEmail({ to: club.email, nom: club.nom }).catch(() => {});
   revalidatePath("/admin");
   redirect("/admin");
 }
@@ -504,10 +621,19 @@ export async function adminRefuseAction(formData: FormData): Promise<void> {
   if (!me || me.role !== "admin") return;
   const id = String(formData.get("id") ?? "");
   const motif = String(formData.get("motif") ?? "").trim().slice(0, LIMITS.REFUS_MOTIF_MAX);
+  const motifFinal = motif || "Licence non valide.";
+  // Récupère email + nom du club (role: club) pour l'email de notification.
+  const club = await prisma.club.findFirst({
+    where: { id, role: "club" },
+    select: { email: true, nom: true },
+  });
+  if (!club) return;
   await prisma.club.updateMany({
     where: { id, role: "club" },
-    data: { statutVerification: "refuse", refusMotif: motif || "Licence non valide." },
+    data: { statutVerification: "refuse", refusMotif: motifFinal },
   });
+  // Email "compte refusé" (fire-and-forget : le refus est déjà fait).
+  await sendAccountRefusedEmail({ to: club.email, nom: club.nom, motif: motifFinal }).catch(() => {});
   revalidatePath("/admin");
   redirect("/admin");
 }

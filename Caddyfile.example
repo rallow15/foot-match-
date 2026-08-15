@@ -12,4 +12,10 @@ ton-domaine.fr {
 	# Headers de sécurité complémentaires (Next.js en ajoute déjà via next.config.ts ;
 	# Caddy ne les écrase pas si Next les pose — on évite les doublons en laissant
 	# Next gérer CSP/HSTS/X-Frame-Options).
+	#
+	# Rate limiting : l'app lit l'IP client via X-Forwarded-For (dernière entrée).
+	# Caddy ajoute l'IP réelle du client EN FIN de XFF, donc la dernière entrée
+	# reste fiable même si le client envoie une XFF falsifiée. Ne pas relayer
+	# X-Forwarded-For sans cette réécriture (sinon l'IP devient usurpable et les
+	# limites contournables).
 }

@@ -18,6 +18,17 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
+// Hash bcrypt factice, calculé une fois (lazy) puis mis en cache. Sert à
+// égaliser le temps de réponse du login quand l'email n'existe pas : on lance
+// quand même un bcrypt.compare (~100 ms) pour qu'un attaquant ne puisse pas
+// distinguer un compte existant d'un compte absent via le timing (anti-
+// énumération d'emails par oracle de timing).
+let _dummyHash: string | null = null;
+export async function verifyPasswordAgainstDummy(password: string): Promise<void> {
+  if (!_dummyHash) _dummyHash = await bcrypt.hash("dummy-constant-value", 10);
+  await bcrypt.compare(password, _dummyHash).catch(() => {});
+}
+
 // Token opaque (32 octets aléatoires). Utilisé pour les sessions ET pour les
 // liens de réinitialisation de mot de passe : la base ne stocke jamais le
 // token clair, seulement son hash SHA-256.

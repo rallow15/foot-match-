@@ -32,6 +32,11 @@ model Club {
   passwordHash         String
   // distinguishes a platform admin from a regular club
   role                 String     @default("club") // club | admin
+  // Anti brute-force login : compteur d'échecs + verrou temporaire. L'état est
+  // en base (pas en mémoire), donc il survit aux redémarrages et aux instances
+  // multiples — complète rate-limit.ts qui reste mono-instance.
+  failedLoginAttempts  Int        @default(0)
+  lockedUntil          DateTime?
   derniereActiviteAt   DateTime   @default(now())
   createdAt            DateTime   @default(now())
 
@@ -119,6 +124,10 @@ model ContactLog {
 
   @@index([annonceId])
   @@index([demandeurClubId])
+  // Idempotence de la mise en relation : un même demandeur ne contacte une
+  // annonce qu'une fois. Atomicité au niveau base (anti race + anti
+  // email-bombing : pas de renvoi de notification sur re-demande).
+  @@unique([demandeurClubId, annonceId])
 }
 
 model PasswordResetToken {

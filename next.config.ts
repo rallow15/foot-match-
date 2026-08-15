@@ -19,6 +19,15 @@ const imgSources = [
   supabaseOrigin,
 ].filter(Boolean).join(" ");
 
+const isProd = process.env.NODE_ENV === "production";
+// En production on retire 'unsafe-eval' (inutile en build App Router server
+// components — aucune raison de l'autoriser). On garde 'unsafe-inline' le temps
+// de migrer vers des nonces par requête (Next 16 les génère si on les achemine
+// via le middleware) ; le retirer sans nonce casserait l'hydration.
+const scriptSrc = isProd
+  ? "'self' 'unsafe-inline'"
+  : "'self' 'unsafe-inline' 'unsafe-eval'";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -28,7 +37,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
       `img-src ${imgSources}`,
       "media-src 'self'",

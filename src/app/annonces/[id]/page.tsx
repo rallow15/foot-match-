@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { fetchAnnonceById } from "@/lib/queries";
 import { getCurrentClub } from "@/lib/auth";
 import { getCategorie, DOM_EXT_LABEL, NIVEAU_LABEL } from "@/lib/referential";
-import { formatDateLongFR, relTime } from "@/lib/utils";
+import { formatDateLongFR, relTime, todayISO } from "@/lib/utils";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { ContactForm } from "@/components/ContactForm";
@@ -17,7 +17,11 @@ export default async function AnnonceDetailPage({
 }) {
   const { id } = await params;
   const annonce = await fetchAnnonceById(id);
-  if (!annonce || annonce.statut === "annule") notFound();
+  // 404 si introuvable, annulée, ou à date passée : l'auto-expiration s'applique
+  // aussi à l'accès direct (la recherche filtre déjà date >= today, mais un
+  // lien direct sur une annonce périmée ne doit ni s'afficher ni être
+  // contactable).
+  if (!annonce || annonce.statut === "annule" || annonce.date < todayISO()) notFound();
 
   const cat = getCategorie(annonce.equipe.categorie);
   const dom = annonce.domicileExterieur as keyof typeof DOM_EXT_LABEL;
