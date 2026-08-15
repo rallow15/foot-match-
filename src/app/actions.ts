@@ -16,7 +16,7 @@ import {
   verifyPasswordAgainstDummy,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail } from "@/lib/mail";
+import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
 import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
@@ -26,7 +26,7 @@ import {
   isValidCategorie,
   isValidNiveauFor,
 } from "@/lib/referential";
-import { saveUpload } from "@/lib/upload";
+import { saveUpload, deleteUpload } from "@/lib/upload";
 import {
   isValidCodePostal,
   isValidDate,
@@ -175,6 +175,14 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     // Email de confirmation d'inscription (fire-and-forget : un souci SMTP
     // ne doit pas faire échouer l'inscription, déjà persistée en base).
     await sendRegistrationConfirmationEmail({ to: email, nom }).catch(() => {});
+    // Notification admin : prévient la boîte de modération qu'une licence est à
+    // valider. Fire-and-forget (même raison).
+    await sendAdminNewRegistrationEmail({
+      nom,
+      email,
+      ville: geo.ville,
+      telephone,
+    }).catch(() => {});
   } catch (e) {
     if ((e as { code?: string }).code === "P2002")
       return { error: "Un compte existe déjà avec cet email." };
@@ -635,6 +643,38 @@ export async function adminRefuseAction(formData: FormData): Promise<void> {
   // Email "compte refusé" (fire-and-forget : le refus est déjà fait).
   await sendAccountRefusedEmail({ to: club.email, nom: club.nom, motif: motifFinal }).catch(() => {});
   revalidatePath("/admin");
+  redirect("/admin");
+}
+
+// Suppression définitive d'un club par l'admin. Supprime le club ET tout ce qui
+// en dépend (équipes, annonces, contacts, sessions, tokens de reset) grâce aux
+// `onDelete: Cascade` du schéma. Nettoie aussi best-effort les fichiers Storage
+// (logo public + licence privée) — un orphan ne doit pas bloquer la suppression.
+// Jamais un compte admin : on filtre `role: "club"`.
+export async function adminDeleteClubAction(formData: FormData): Promise<void> {
+  const me = await getCurrentClub();
+  if (!me || me.role !== "admin") return;
+  const id = String(formData.get("id") ?? "");
+
+  // Récupère les URL des fichiers à nettoyer (et verrouille role: club).
+  const club = await prisma.club.findFirst({
+    where: { id, role: "club" },
+    select: { logoUrl: true, licenceFichierUrl: true },
+  });
+  if (!club) return;
+
+  // Suppression du club — les cascades DB font le reste pour les relations.
+  await prisma.club.delete({ where: { id } });
+
+  // Nettoyage Storage best-effort (après la suppression DB : un orphan fichier
+  // n'empêche pas la suppression du compte, et l'inverse non plus).
+  await Promise.all([
+    deleteUpload("logo", club.logoUrl),
+    deleteUpload("licence", club.licenceFichierUrl),
+  ]).catch(() => {});
+
+  revalidatePath("/admin");
+  revalidatePath("/annonces");
   redirect("/admin");
 }
 

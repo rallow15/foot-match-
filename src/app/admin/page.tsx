@@ -3,7 +3,8 @@ import { getCurrentClub } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { fetchPendingClubs } from "@/lib/queries";
 import { relTime } from "@/lib/utils";
-import { adminRefuseAction, adminValidateAction } from "@/app/actions";
+import { adminDeleteClubAction, adminRefuseAction, adminValidateAction } from "@/app/actions";
+import { DeleteClubButton } from "@/components/DeleteClubButton";
 import { StatutVerifBadge } from "@/components/Badges";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +70,7 @@ export default async function AdminPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row">
+                <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center">
                   <form action={adminValidateAction} className="inline">
                     <input type="hidden" name="id" value={c.id} />
                     <button className="btn-accent text-sm" type="submit">Valider le club</button>
@@ -83,6 +84,7 @@ export default async function AdminPage() {
                     />
                     <button className="btn-danger text-sm" type="submit">Refuser</button>
                   </form>
+                  <DeleteClubButton clubId={c.id} clubNom={c.nom} action={adminDeleteClubAction} />
                 </div>
               </li>
             ))}
@@ -96,9 +98,12 @@ export default async function AdminPage() {
           <h2 className="headline text-2xl text-paper">Décisions récentes</h2>
           <ul className="mt-4 space-y-2">
             {recent.map((c) => (
-              <li key={c.id} className="card flex items-center justify-between p-4">
+              <li key={c.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                 <span className="text-paper">{c.nom}</span>
-                <StatutVerifBadge statut={c.statutVerification} />
+                <div className="flex items-center gap-3">
+                  <StatutVerifBadge statut={c.statutVerification} />
+                  <DeleteClubButton clubId={c.id} clubNom={c.nom} action={adminDeleteClubAction} />
+                </div>
               </li>
             ))}
           </ul>

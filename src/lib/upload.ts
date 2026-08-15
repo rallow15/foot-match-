@@ -94,3 +94,42 @@ export async function saveUpload(
   // Bucket privé : servi via la route authentifiée /api/uploads/<name>.
   return `/api/uploads/${name}`;
 }
+
+// Extrait le nom de l'objet Storage à partir de la valeur stockée en base :
+//  - bucket public  (logo)    : URL complète du CDN -> dernier segment de chemin
+//  - bucket privé   (licence) : "/api/uploads/<name>" -> "<name>"
+// Retourne null si la valeur est vide/ne correspond pas au prefix attendu.
+function storedToObjectName(prefix: UploadPrefix, value: string | null | undefined): string | null {
+  if (!value) return null;
+  const bucket = BUCKETS[prefix];
+  if (bucket.public) {
+    try {
+      const u = new URL(value);
+      const seg = u.pathname.split("/").filter(Boolean).pop();
+      return seg && seg.startsWith(`${prefix}_`) ? seg : null;
+    } catch {
+      return null;
+    }
+  }
+  // Bucket privé : on attend "/api/uploads/<name>".
+  const marker = "/api/uploads/";
+  if (!value.startsWith(marker)) return null;
+  const seg = value.slice(marker.length);
+  return seg && seg.startsWith(`${prefix}_`) ? seg : null;
+}
+
+// Suppression best-effort d'un fichier Storage (logo / licence) à partir de la
+// valeur stockée en base. N'échoue jamais : un orphan en bucket ne doit pas
+// bloquer la suppression d'un club par l'admin.
+export async function deleteUpload(
+  prefix: UploadPrefix,
+  value: string | null | undefined,
+): Promise<void> {
+  const name = storedToObjectName(prefix, value);
+  if (!name) return;
+  try {
+    await getSupabase().storage.from(BUCKETS[prefix].name).remove([name]);
+  } catch {
+    // best-effort : on ignore.
+  }
+}

@@ -192,3 +192,46 @@ de dirigeant / éducateur valide : ${appUrl}/inscription
   }
   await t.sendMail({ from, to: data.to, subject, text });
 }
+
+export interface AdminNewRegistrationMailData {
+  nom: string; // nom du club
+  email: string; // email du club
+  ville: string; // ville du club
+  telephone: string; // téléphone du club
+}
+
+// Email "nouvelle inscription" : notifie l'admin (boîte de modération) à chaque
+// création de compte club, pour qu'il puisse valider la licence rapidement.
+// L'adresse destinataire est configurable via ADMIN_NOTIFY_EMAIL (défaut : la
+// boîte de modération de la plateforme). Distincte de ADMIN_EMAIL (qui est
+// l'email de LOGIN du compte admin) — permet de notifier une autre boîte.
+export async function sendAdminNewRegistrationEmail(data: AdminNewRegistrationMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const to = process.env.ADMIN_NOTIFY_EMAIL ?? "matchamicalamateur@gmail.com";
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const subject = `Nouvelle inscription à valider — ${data.nom}`;
+  const text = `Bonjour,
+
+Une nouvelle inscription vient d'être soumise sur Matchs Amicaux.
+
+Club : ${data.nom}
+Email : ${data.email}
+Ville : ${data.ville}
+Téléphone : ${data.telephone}
+
+La licence est en attente de vérification manuelle. À valider depuis
+l'espace admin : ${appUrl}/admin
+
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    console.log("\n[MAIL · fallback console · ADMIN INSCRIPTION] -------------------------");
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(text);
+    console.log("[MAIL] -------------------------------------------\n");
+    return;
+  }
+  await t.sendMail({ from, to, subject, text });
+}
