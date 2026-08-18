@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
+import { LIGUES, districtsForLigue } from "@/lib/ligues";
 import { formatDateLongFR } from "@/lib/utils";
 
 export const metadata = {
@@ -11,9 +12,31 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function MatchsConfirmesPage() {
+export default async function MatchsConfirmesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ligue?: string; district?: string }>;
+}) {
+  const params = await searchParams;
+  const ligue = typeof params.ligue === "string" ? params.ligue : "";
+  const requestedDistrict =
+    typeof params.district === "string" ? params.district : "";
+
+  const availableDistricts = ligue ? districtsForLigue(ligue) : [];
+  const district = availableDistricts.includes(requestedDistrict)
+    ? requestedDistrict
+    : "";
+
+  const where: Record<string, unknown> = { statut: "confirme" };
+  if (ligue || district) {
+    const clubFilter: Record<string, unknown> = {};
+    if (ligue) clubFilter.ligue = ligue;
+    if (district) clubFilter.district = district;
+    where.club = clubFilter;
+  }
+
   const annonces = await prisma.annonce.findMany({
-    where: { statut: "confirme" },
+    where,
     include: {
       equipe: true,
       club: {
@@ -43,13 +66,67 @@ export default async function MatchsConfirmesPage() {
         commentaires renseignés par les clubs.
       </p>
 
+      <form
+        method="get"
+        action="/matchs-confirmees"
+        className="card mt-6 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        <div>
+          <label htmlFor="ligue" className="label">
+            Ligue
+          </label>
+          <select
+            id="ligue"
+            name="ligue"
+            className="input"
+            defaultValue={ligue}
+          >
+            <option value="">Toutes les ligues</option>
+            {LIGUES.map((l) => (
+              <option key={l.ligue} value={l.ligue}>
+                {l.ligue}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="district" className="label">
+            District (sous-ligue)
+          </label>
+          <select
+            id="district"
+            name="district"
+            className="input"
+            defaultValue={district}
+            disabled={availableDistricts.length === 0}
+          >
+            <option value="">Tous les districts</option>
+            {availableDistricts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-end gap-3">
+          <button type="submit" className="btn-accent">
+            Filtrer
+          </button>
+          <Link href="/matchs-confirmees" className="btn-ghost">
+            Réinitialiser
+          </Link>
+        </div>
+      </form>
+
       {annonces.length === 0 ? (
         <div className="card mt-6 p-12 text-center">
           <p className="headline text-2xl text-paper">
-            Aucun match confirmé pour le moment
+            Aucun match confirmé pour cette sélection
           </p>
           <p className="mt-2 text-muted">
-            Les clubs n’ont pas encore confirmé de matchs. Revenez bientôt.
+            Essayez d’élargir la zone géographique ou revenez plus tard.
           </p>
           <Link href="/annonces" className="btn-accent mt-4 inline-block">
             Rechercher un match
@@ -93,12 +170,22 @@ export default async function MatchsConfirmesPage() {
                 </div>
 
                 <div className="mt-4 grid gap-1 text-sm text-muted">
-                  <p>📅 {formatDateLongFR(a.date)} · {a.heure}</p>
-                  <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}</p>
+                  <p>
+                    📅 {formatDateLongFR(a.date)} · {a.heure}
+                  </p>
+                  <p>
+                    📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}
+                  </p>
                   <p>
                     🏟️ {a.club.nom}
                     {a.stadeDispo && a.stadeNom ? ` · ${a.stadeNom}` : ""}
                   </p>
+                  {(a.club.ligue || a.club.district) && (
+                    <p>
+                      📌 {a.club.ligue}
+                      {a.club.district ? ` · ${a.club.district}` : ""}
+                    </p>
+                  )}
                 </div>
 
                 {result?.commentaire && (
