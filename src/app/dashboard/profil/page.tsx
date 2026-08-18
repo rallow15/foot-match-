@@ -4,8 +4,8 @@ import { getCurrentClub } from "@/lib/auth";
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { LogoForm } from "@/components/dashboard/LogoForm";
 import { ProfilForm } from "@/components/dashboard/ProfilForm";
+import { LogoutAllDevicesButton } from "@/components/dashboard/LogoutAllDevicesButton";
 import { StatutVerifBadge } from "@/components/Badges";
-import { logoutAllDevicesAction } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -69,13 +69,7 @@ export default async function ProfilPage() {
         <p className="mt-1 text-sm text-muted">
           Si vous pensez que votre compte a été utilisé sur un autre appareil sans votre accord, déconnectez-le partout.
         </p>
-        <form action={logoutAllDevicesAction} className="mt-4" onSubmit={(e) => {
-          if (!confirm("Déconnecter votre compte de tous les appareils ?")) {
-            e.preventDefault();
-          }
-        }}>
-          <button type="submit" className="btn-danger text-sm">Déconnecter tous les appareils</button>
-        </form>
+        <LogoutAllDevicesButton />
       </section>
     </div>
   );
