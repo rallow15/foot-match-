@@ -148,8 +148,13 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
 
   // Géocodage de la ville (avant l'upload, idem : on évite un fichier orphelin
   // si la ville est introuvable).
+  // On garde le code postal saisi par l'utilisateur : l'API BAN renvoie le code
+  // postal principal de la commune, pas les codes postaux secondaires (ex. 13013
+  // -> 13001). La coordonnée GPS reste suffisamment précise pour la recherche par
+  // rayon au niveau de la commune.
   const geo = (await geocode(`${ville} ${codePostal}`)) ?? (await geocode(ville));
   if (!geo) return { error: "Ville introuvable. Vérifiez le nom et le code postal." };
+  const codePostalFinal = isValidCodePostal(codePostal) ? codePostal : geo.codePostal;
 
   let licenceUrl: string | null = null;
   try {
@@ -165,7 +170,7 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
       data: {
         nom,
         ville: geo.ville,
-        codePostal: geo.codePostal || codePostal,
+        codePostal: codePostalFinal,
         latitude: geo.latitude,
         longitude: geo.longitude,
         ligue,
