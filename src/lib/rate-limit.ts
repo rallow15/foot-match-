@@ -1,54 +1,90 @@
-// Rate limiting IP — en mémoire, adapté pour un déploiement mono-serveur (MVP).
+// Rate limiting par IP — compteur partagé en base (Postgres) pour résister au
+// multi-instances (Fluid Compute / serverless). Chaque instance lit/écrit le
+// même compteur : un attaquant ne peut plus contourner les seuils en répartis-
+// sant ses requêtes sur plusieurs instances.
+//
+// Stratégie fail-open : si la base est indisponible, on laisse passer (le rate
+// limiting est une protection best-effort, pas une gate d'auth — ne pas bloquer
+// tous les utilisateurs pour une panne DB). Le verrouillage de login, lui,
+// reste en base sur Club (failedLoginAttempts / lockedUntil) et est fiable.
 
-interface RateEntry {
-  count: number;
-  resetAt: number; // Unix ms
-}
-
-const store = new Map<string, RateEntry>();
-
-// Nettoyage périodique des entrées expirées (toutes les 10 min)
-const CLEANUP_INTERVAL = 10 * 60 * 1000;
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-function startCleanup() {
-  if (cleanupTimer) return;
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [ip, entry] of store) {
-      if (now > entry.resetAt) store.delete(ip);
-    }
-  }, CLEANUP_INTERVAL);
-  // Ne pas empêcher la fermeture du process
-  if (cleanupTimer && typeof cleanupTimer === "object" && "unref" in cleanupTimer) {
-    (cleanupTimer as ReturnType<typeof setInterval> & { unref(): void }).unref();
-  }
-}
-
-startCleanup();
+import { prisma } from "./db";
 
 export interface RateLimitOpts {
   maxRequests: number;
   windowMs: number;
 }
 
-/**
- * Retourne `true` si la requête est autorisée, `false` si le seuil est dépassé.
- */
-export function rateLimit(ip: string, opts: RateLimitOpts): boolean {
-  const now = Date.now();
-  const entry = store.get(ip);
+// Prune périodique des entrées expirées : la table ne doit pas croître
+// indéfiniment. Limité à une exécution par minute et par instance pour éviter
+// une écriture systématique à chaque requête.
+const PRUNE_INTERVAL_MS = 60_000;
+let lastPruneAt = 0;
 
-  if (!entry || now > entry.resetAt) {
-    store.set(ip, { count: 1, resetAt: now + opts.windowMs });
+async function maybePrune(now: number): Promise<void> {
+  if (now - lastPruneAt < PRUNE_INTERVAL_MS) return;
+  lastPruneAt = now;
+  await prisma.rateLimit
+    .deleteMany({ where: { resetAt: { lt: new Date(now - 60_000) } } })
+    .catch(() => {});
+}
+
+// Implémentation commune du rate-limiting en base.
+// L'appelant fournit une clé arbitraire (`scope:identifier`).
+// Incrément atomique côté SQL (`count: { increment: 1 }`) : pas de "lost update"
+// en cas de concurrence. Seule race résiduelle : la réinitialisation d'une
+// fenêtre expirée peut, sur un burst simultané, laisser passer 1-2 requêtes
+// de plus que `maxRequests` — acceptable pour un mécanisme best-effort.
+async function rateLimitByKey(
+  key: string,
+  opts: RateLimitOpts,
+): Promise<boolean> {
+  const now = Date.now();
+  void maybePrune(now);
+
+  const resetAt = new Date(now + opts.windowMs);
+
+  try {
+    // upsert atomique : crée le compteur à 1, ou l'incrémente.
+    const entry = await prisma.rateLimit.upsert({
+      where: { key },
+      create: { key, count: 1, resetAt },
+      update: { count: { increment: 1 } },
+      select: { count: true, resetAt: true },
+    });
+
+    // Fenêtre expirée -> on réarme à 1 (nouvelle fenêtre).
+    if (entry.resetAt.getTime() <= now) {
+      await prisma.rateLimit.update({
+        where: { key },
+        data: { count: 1, resetAt },
+      });
+      return true;
+    }
+
+    return entry.count <= opts.maxRequests;
+  } catch {
+    // Fail-open (cf. commentaire d'en-tête).
     return true;
   }
+}
 
-  entry.count++;
-  if (entry.count > opts.maxRequests) {
-    return false;
-  }
-  return true;
+export async function rateLimit(
+  ip: string,
+  action: string,
+  opts: RateLimitOpts,
+): Promise<boolean> {
+  return rateLimitByKey(`${action}:${ip}`, opts);
+}
+
+// Rate-limit par compte (ou autre identifiant applicatif), indépendamment de l'IP.
+// Utile contre l'email-bombing distribué sur un compte donné.
+export async function rateLimitByAccount(
+  accountId: string,
+  action: string,
+  opts: RateLimitOpts,
+): Promise<boolean> {
+  return rateLimitByKey(`${action}:account:${accountId}`, opts);
 }
 
 // Limiteurs pré-configurés

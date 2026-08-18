@@ -14,11 +14,12 @@ import {
   touchActivity,
   verifyPassword,
   verifyPasswordAgainstDummy,
+  revokeAllSessions,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail } from "@/lib/mail";
+import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -52,21 +53,28 @@ export type ActionState = {
 /* --- Helpers --- */
 
 // IP client pour le rate limiting.
-// En production derrière Vercel, `x-vercel-forwarded-for` est l'IP réelle du
-// client, non falsifiable par le requérant. On privilégie donc cette en-tête ;
-// à défaut on prend la dernière IP de `x-forwarded-for` (proxy de confiance le
-// plus proche, moins falsifiable que la première). Le rate limiting reste
-// « best-effort » : in-memory et mono-instance (cf. rate-limit.ts).
+// Sur Vercel, `x-vercel-forwarded-for` est l'IP réelle du client, non falsifiable
+// par le requérant : on la privilégie sans condition.
+// Hors Vercel (auto-hébergement derrière un reverse-proxy type Caddy/Nginx), les
+// en-têtes `x-forwarded-for` / `x-real-ip` sont FALSIFIABLES par le client tant
+// qu'aucun proxy de confiance ne les réécrit. On ne les fait donc confiance que
+// si le déploiement l'exprime via TRUST_PROXY_HEADERS=1 (cf. .env.example).
+// Sans cela, on renvoie "unknown" : le rate-limiting devient par hypothèse
+// conservateur (toutes les requêtes partagent le même seau) plutôt que spoofable.
 async function getClientIp(): Promise<string> {
   const h = await headers();
   const vercel = h.get("x-vercel-forwarded-for");
   if (vercel) return vercel.split(",")[0].trim();
-  const xff = h.get("x-forwarded-for");
-  if (xff) {
-    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
-    if (parts.length) return parts[parts.length - 1];
+  if (process.env.TRUST_PROXY_HEADERS === "1") {
+    const xff = h.get("x-forwarded-for");
+    if (xff) {
+      const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+      if (parts.length) return parts[parts.length - 1];
+    }
+    const real = h.get("x-real-ip");
+    if (real) return real.trim();
   }
-  return h.get("x-real-ip")?.trim() ?? "unknown";
+  return "unknown";
 }
 
 /* ---------------- Auth ---------------- */
@@ -95,7 +103,7 @@ function safeRedirectPath(value: string): string | null {
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting
   const ip = await getClientIp();
-  if (!rateLimit(ip, REGISTER_RATE_LIMIT)) {
+  if (!(await rateLimit(ip, "register", REGISTER_RATE_LIMIT))) {
     return { error: "Trop de tentatives. Réessayez dans un instant." };
   }
 
@@ -196,7 +204,7 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting
   const ip = await getClientIp();
-  if (!rateLimit(ip, LOGIN_RATE_LIMIT)) {
+  if (!(await rateLimit(ip, "login", LOGIN_RATE_LIMIT))) {
     return { error: "Trop de tentatives. Réessayez dans un instant." };
   }
 
@@ -211,12 +219,11 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
 
   const club = await prisma.club.findUnique({ where: { email } });
 
-  // Verrouillage actif ? On vérifie AVANT le bcrypt pour ne rien laisser fuir
-  // (pas de timing différent, message identique à un compte bloqué).
+  // Verrouillage actif ? On vérifie AVANT le bcrypt pour ne rien laisser fuir.
+  // On garde le même message générique qu'un échec classique pour ne pas révéler
+  // l'existence du compte ni son état de verrouillage (anti-énumération).
   const now = new Date();
-  if (club?.lockedUntil && club.lockedUntil > now) {
-    return { error: "Compte temporairement bloqué suite à plusieurs tentatives échouées. Réessayez plus tard." };
-  }
+  const isLocked = club?.lockedUntil && club.lockedUntil > now;
   // Verrouillage expiré : on réarme le compteur avant de retenter.
   if (club?.lockedUntil && club.lockedUntil <= now) {
     await prisma.club
@@ -224,14 +231,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       .catch(() => {});
   }
 
-  // Vérification du mot de passe. Si l'email n'existe pas, on exécute quand
-  // même un bcrypt factice pour égaliser le temps de réponse (anti-énumération
-  // par oracle de timing).
-  const passwordOk = club
+  // Vérification du mot de passe. Si l'email n'existe pas ou est verrouillé,
+  // on exécute quand même un bcrypt factice pour égaliser le temps de réponse
+  // (anti-énumération par oracle de timing).
+  const passwordOk = club && !isLocked
     ? await verifyPassword(password, club.passwordHash)
     : await verifyPasswordAgainstDummy(password).then(() => false);
 
-  if (!club || !passwordOk) {
+  if (!club || !passwordOk || isLocked) {
     if (club) {
       const attempts = (club.failedLoginAttempts ?? 0) + 1;
       const lock = attempts >= MAX_FAILED_LOGINS;
@@ -252,6 +259,12 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   await prisma.club
     .update({ where: { id: club.id }, data: { failedLoginAttempts: 0, lockedUntil: null } })
     .catch(() => {});
+
+  // Si le compte était verrouillé (cas normalement impossible ici car on
+  // refuse le login pendant le verrou), on empêche la connexion.
+  if (isLocked) {
+    return { error: "Identifiants incorrects." };
+  }
 
   await createSession(club.id);
   revalidatePath("/");
@@ -278,19 +291,31 @@ const RESET_TOKEN_MINUTES = 15;
 const RESET_REQUEST_OK = { ok: true as const };
 
 export async function requestPasswordResetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  // Rate limiting (anti email-bombing)
-  const ip = await getClientIp();
-  if (!rateLimit(ip, PASSWORD_RESET_RATE_LIMIT)) {
-    return { error: "Trop de demandes. Réessayez dans quelques minutes." };
-  }
-
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   // Même si l'email est invalide, on renvoie le message générique ok pour ne
   // pas divulguer d'information sur les comptes existants.
   if (!isValidEmail(email)) return RESET_REQUEST_OK;
 
+  // On récupère le club AVANT le rate-limit pour pouvoir limiter par compte.
+  // L'existence du compte n'est pas révélée au client (même réponse ok).
   const club = await prisma.club.findUnique({ where: { email } });
   if (!club) return RESET_REQUEST_OK;
+
+  // Rate limiting par IP ET par compte (anti email-bombing, y compris distribué).
+  const ip = await getClientIp();
+  const [ipOk, accountOk] = await Promise.all([
+    rateLimit(ip, "password-reset", PASSWORD_RESET_RATE_LIMIT),
+    rateLimitByAccount(club.id, "password-reset", { maxRequests: 2, windowMs: 3_600_000 }), // 2 demandes / heure par compte
+  ]);
+  if (!ipOk || !accountOk) {
+    return RESET_REQUEST_OK; // ne pas révéler que la limite a été atteinte
+  }
+
+  // Invalide les tokens non-utilisés précédents : un seul lien actif à la fois
+  // (réduit la surface d'attaque si plusieurs emails ont été générés).
+  await prisma.passwordResetToken
+    .deleteMany({ where: { clubId: club.id, usedAt: null } })
+    .catch(() => {});
 
   // Nettoyage opportuniste des tokens expirés de ce club (fire-and-forget)
   await prisma.passwordResetToken
@@ -315,7 +340,7 @@ export async function requestPasswordResetAction(_prev: ActionState, formData: F
 export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting (anti spam de tokens aléatoires -> DoS de lookups DB).
   const ip = await getClientIp();
-  if (!rateLimit(ip, RESET_SUBMIT_RATE_LIMIT)) {
+  if (!(await rateLimit(ip, "reset-submit", RESET_SUBMIT_RATE_LIMIT))) {
     return { error: "Trop de tentatives. Réessayez dans un instant." };
   }
 
@@ -361,6 +386,10 @@ export async function resetPasswordAction(_prev: ActionState, formData: FormData
     prisma.session.deleteMany({ where: { clubId: record.clubId } }),
   ]);
 
+  // Notifie le propriétaire du compte qu'un changement de mot de passe vient
+  // d'être effectué (fire-and-forget : la transaction est déjà validée).
+  await sendPasswordChangedEmail({ to: record.club.email, nom: record.club.nom }).catch(() => {});
+
   revalidatePath("/login");
   redirect("/login?reset=ok");
 }
@@ -388,6 +417,17 @@ export async function deleteEquipeAction(formData: FormData): Promise<void> {
   const club = await getCurrentClub();
   if (!club) return;
   const id = String(formData.get("id") ?? "");
+  // Garde anti-perte de données : supprimer une équipe supprime en cascade ses
+  // annonces (onDelete: Cascade). On bloque tant qu'il reste des annonces
+  // ouvertes — l'utilisateur doit d'abord les marquer pourvues/annulées ou les
+  // supprimer explicitement. Le statut « passé » (pourvu/annulé) reste
+  // supprimable : c'est du nettoyage d'archive, pas une perte de match actif.
+  const ouvertes = await prisma.annonce.count({
+    where: { equipeId: id, clubId: club.id, statut: "ouvert" },
+  });
+  if (ouvertes > 0) {
+    redirect("/dashboard?equipe_err=1");
+  }
   await prisma.equipe.deleteMany({ where: { id, clubId: club.id } });
   revalidatePath("/dashboard");
   redirect("/dashboard");
@@ -413,6 +453,7 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
 
   if (!equipeId || !date || !heure) return { error: "Équipe, date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
+  if (date < todayISO()) return { error: "La date ne peut pas être antérieure à aujourd'hui." };
   if (!isValidHeure(heure)) return { error: "Horaire invalide (ex. 13, 14:00 ou 14:00-16:00)." };
   if (!DOM_EXT.includes(dom as never)) return { error: "Domicile/Extérieur invalide." };
   if (stadeDispo && !stadeNom) return { error: "Indiquez le nom du stade si le stade est disponible." };
@@ -476,6 +517,7 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
 
   if (!date || !heure) return { error: "Date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
+  if (date < todayISO()) return { error: "La date ne peut pas être antérieure à aujourd'hui." };
   if (!isValidHeure(heure)) return { error: "Horaire invalide (ex. 13, 14:00 ou 14:00-16:00)." };
   if (!DOM_EXT.includes(dom as never)) return { error: "Domicile/Extérieur invalide." };
   if (stadeDispo && !stadeNom) return { error: "Indiquez le nom du stade si le stade est disponible." };
@@ -535,7 +577,7 @@ export async function deleteAnnonceAction(formData: FormData): Promise<void> {
 export async function contacterAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting
   const ip = await getClientIp();
-  if (!rateLimit(ip, CONTACT_RATE_LIMIT)) {
+  if (!(await rateLimit(ip, "contact", CONTACT_RATE_LIMIT))) {
     return { error: "Trop de demandes. Réessayez dans un instant." };
   }
 
@@ -678,12 +720,26 @@ export async function adminDeleteClubAction(formData: FormData): Promise<void> {
   redirect("/admin");
 }
 
+/* ---------------- Profil club ---------------- */
+
+export async function logoutAllDevicesAction(): Promise<void> {
+  const club = await getCurrentClub();
+  if (!club) return;
+
+  await revokeAllSessions(club.id);
+  // Supprime aussi le cookie courant.
+  await logout();
+
+  revalidatePath("/");
+  redirect("/login");
+}
+
 /* ---------------- Profil club : logo ---------------- */
 
 export async function updateLogoAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   // Rate limiting
   const ip = await getClientIp();
-  if (!rateLimit(ip, UPLOAD_RATE_LIMIT)) {
+  if (!(await rateLimit(ip, "upload", UPLOAD_RATE_LIMIT))) {
     return { error: "Trop de tentatives. Réessayez dans un instant." };
   }
 

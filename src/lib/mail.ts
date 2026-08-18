@@ -193,6 +193,41 @@ de dirigeant / éducateur valide : ${appUrl}/inscription
   await t.sendMail({ from, to: data.to, subject, text });
 }
 
+export interface PasswordChangedMailData {
+  to: string; // email du club dont le mot de passe a été modifié
+  nom: string; // nom du club
+}
+
+// Email de notification après modification réussie du mot de passe. Permet au
+// propriétaire légitime de détecter une intrusion s'il n'est pas à l'origine du
+// changement.
+export async function sendPasswordChangedEmail(data: PasswordChangedMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const subject = "Votre mot de passe Matchs Amicaux a été modifié";
+  const text = `Bonjour,
+
+Le mot de passe de votre club « ${data.nom} » vient d'être modifié sur Matchs Amicaux.
+
+Si vous êtes à l'origine de cette modification, vous pouvez ignorer cet email.
+Sinon, votre compte a peut-être été compromis. Contactez-nous immédiatement et
+reconnectez-vous avec le mot de passe actuel pour sécuriser votre compte :
+${appUrl}/login
+
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    console.log("\n[MAIL · fallback console · PASSWORD CHANGED] -------------------------");
+    console.log(`To: ${data.to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(text);
+    console.log("[MAIL] -------------------------------------------\n");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}
+
 export interface AdminNewRegistrationMailData {
   nom: string; // nom du club
   email: string; // email du club

@@ -102,3 +102,10 @@ export async function touchActivity(clubId: string): Promise<void> {
     .club.update({ where: { id: clubId }, data: { derniereActiviteAt: new Date() } })
     .catch(() => {});
 }
+
+// Déconnecte le club de tous les appareils en supprimant toutes ses sessions.
+// Utilisé par exemple après un changement de mot de passe explicite ou depuis
+// le profil club.
+export async function revokeAllSessions(clubId: string): Promise<void> {
+  await prisma.session.deleteMany({ where: { clubId } }).catch(() => {});
+}

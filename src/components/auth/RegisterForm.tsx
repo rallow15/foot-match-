@@ -80,7 +80,10 @@ export function RegisterForm() {
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="password">Mot de passe * <span className="text-muted-2 normal-case tracking-normal">(min. 8 caractères)</span></label>
-          <input id="password" name="password" type="password" minLength={8} required className="input" />
+          <input id="password" name="password" type="password" minLength={8} required className="input" aria-describedby="password-help" />
+          <p id="password-help" className="mt-1 text-xs text-muted-2">
+            3 types parmi : minuscule, majuscule, chiffre, symbole.
+          </p>
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="licence">Licence dirigeant/éducateur * <span className="text-muted-2 normal-case tracking-normal">(PDF, JPG, PNG — max 8 Mo)</span></label>

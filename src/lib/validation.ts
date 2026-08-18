@@ -78,6 +78,8 @@ export function isValidEmail(value: string): boolean {
 }
 
 // --- Mot de passe ---
+// Exige au moins 8 caractères et 3 des 4 familles suivantes :
+// minuscule, majuscule, chiffre, symbole.
 export function validatePassword(value: string): ValidationResult {
   if (value.length < LIMITS.PASSWORD_MIN) {
     return { valid: false, error: `Le mot de passe doit faire au moins ${LIMITS.PASSWORD_MIN} caractères.` };
@@ -85,6 +87,22 @@ export function validatePassword(value: string): ValidationResult {
   if (value.length > LIMITS.PASSWORD_MAX) {
     return { valid: false, error: `Le mot de passe ne doit pas dépasser ${LIMITS.PASSWORD_MAX} caractères.` };
   }
+
+  const families = [
+    /[a-z]/,
+    /[A-Z]/,
+    /\d/,
+    /[^A-Za-z0-9]/,
+  ];
+  const matched = families.filter((re) => re.test(value)).length;
+  if (matched < 3) {
+    return {
+      valid: false,
+      error:
+        "Le mot de passe doit contenir au moins 3 des 4 types de caractères : minuscule, majuscule, chiffre, symbole.",
+    };
+  }
+
   return { valid: true };
 }
 

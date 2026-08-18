@@ -33,7 +33,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
             minLength={LIMITS.PASSWORD_MIN}
             maxLength={LIMITS.PASSWORD_MAX}
             className="input"
+            aria-describedby="password-help"
           />
+          <p id="password-help" className="mt-1 text-xs text-muted-2">
+            Min. {LIMITS.PASSWORD_MIN} caractères, dont 3 types parmi : minuscule, majuscule, chiffre, symbole.
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="confirm">Confirmer le mot de passe</label>
