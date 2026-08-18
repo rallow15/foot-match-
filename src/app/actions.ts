@@ -727,6 +727,70 @@ export async function adminDeleteClubAction(formData: FormData): Promise<void> {
 
 /* ---------------- Profil club ---------------- */
 
+export async function updateProfilAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const nom = String(formData.get("nom") ?? "").trim();
+  const ville = String(formData.get("ville") ?? "").trim();
+  const codePostal = String(formData.get("codePostal") ?? "").trim();
+  const ligue = String(formData.get("ligue") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim();
+  const telephone = String(formData.get("telephone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!nom || !ville || !codePostal || !telephone || !email) {
+    return { error: "Tous les champs marqués d'un * sont obligatoires." };
+  }
+
+  const nomCheck = validateLength(nom, "Nom", LIMITS.NOM_MAX);
+  if (!nomCheck.valid) return { error: nomCheck.error! };
+  const villeCheck = validateLength(ville, "Ville", LIMITS.VILLE_MAX);
+  if (!villeCheck.valid) return { error: villeCheck.error! };
+  const telCheck = validateLength(telephone, "Téléphone", LIMITS.TELEPHONE_MAX);
+  if (!telCheck.valid) return { error: telCheck.error! };
+
+  if (!isValidLigue(ligue)) return { error: "Ligue obligatoire." };
+  if (!isValidDistrict(ligue, district)) return { error: "District invalide pour cette ligue." };
+  if (!isValidCodePostal(codePostal)) return { error: "Code postal invalide (5 chiffres requis)." };
+  if (!isValidTelephone(telephone)) return { error: "Numéro de téléphone invalide." };
+  if (!isValidEmail(email)) return { error: "Email invalide." };
+
+  // Si l'email change, vérifier qu'il n'est pas déjà utilisé par un autre club.
+  if (email !== club.email) {
+    const existing = await prisma.club.findUnique({ where: { email }, select: { id: true } });
+    if (existing) return { error: "Un compte existe déjà avec cet email." };
+  }
+
+  // Géocodage pour récupérer la ville normalisée et les coordonnées GPS.
+  // Le code postal saisi est conservé s'il est valide.
+  const geo = (await geocode(`${ville} ${codePostal}`)) ?? (await geocode(ville));
+  if (!geo) return { error: "Ville introuvable. Vérifiez le nom et le code postal." };
+  const codePostalFinal = isValidCodePostal(codePostal) ? codePostal : geo.codePostal;
+
+  await prisma.club.update({
+    where: { id: club.id },
+    data: {
+      nom,
+      ville: geo.ville,
+      codePostal: codePostalFinal,
+      latitude: geo.latitude,
+      longitude: geo.longitude,
+      ligue,
+      district,
+      telephone,
+      email,
+    },
+  });
+  await touchActivity(club.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/profil");
+  revalidatePath(`/clubs/${club.id}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export async function logoutAllDevicesAction(): Promise<void> {
   const club = await getCurrentClub();
   if (!club) return;

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentClub } from "@/lib/auth";
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { LogoForm } from "@/components/dashboard/LogoForm";
+import { ProfilForm } from "@/components/dashboard/ProfilForm";
 import { StatutVerifBadge } from "@/components/Badges";
 import { logoutAllDevicesAction } from "@/app/actions";
 
@@ -40,8 +41,19 @@ export default async function ProfilPage() {
         </div>
       </section>
 
+      {/* Informations du club */}
+      <section className="mt-8">
+        <h2 className="headline text-xl text-paper">Informations du club</h2>
+        <p className="mt-1 text-sm text-muted">
+          Modifiez les informations visibles sur votre profil public et vos annonces.
+        </p>
+        <div className="mt-4">
+          <ProfilForm club={club} />
+        </div>
+      </section>
+
       {/* Gestion du logo */}
-      <div className="mt-8">
+      <section className="mt-10">
         <h2 className="headline text-xl text-paper">Logo</h2>
         <p className="mt-1 text-sm text-muted">
           Votre logo apparaît sur vos annonces et votre profil public.
@@ -49,7 +61,7 @@ export default async function ProfilPage() {
         <div className="mt-4">
           <LogoForm />
         </div>
-      </div>
+      </section>
 
       {/* Sécurité */}
       <section className="mt-10">
