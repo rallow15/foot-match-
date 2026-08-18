@@ -19,7 +19,7 @@ import {
 import { geocode } from "@/lib/geo";
 import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, MESSAGE_RATE_LIMIT, MESSAGE_ACCOUNT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -666,6 +666,18 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
 export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const club = await getCurrentClub();
   if (!club || club.role !== "club") return { error: "Non autorisé." };
+  if (club.statutVerification !== "valide")
+    return { error: "Votre compte doit être validé pour envoyer un message." };
+
+  // Rate limiting par IP ET par compte (anti spam de messages + email-bombing).
+  const ip = await getClientIp();
+  const [ipOk, accountOk] = await Promise.all([
+    rateLimit(ip, "message", MESSAGE_RATE_LIMIT),
+    rateLimitByAccount(club.id, "message", MESSAGE_ACCOUNT_RATE_LIMIT),
+  ]);
+  if (!ipOk || !accountOk) {
+    return { error: "Trop de messages. Réessayez dans un instant." };
+  }
 
   const contactLogId = String(formData.get("contactLogId") ?? "");
   const contenu = String(formData.get("contenu") ?? "").trim();

@@ -20,10 +20,26 @@ export interface SearchParams {
 
 export type AnnonceWithRelations = Awaited<ReturnType<typeof fetchAnnonceById>>;
 
+const PUBLIC_CLUB_SELECT = {
+  id: true,
+  nom: true,
+  ville: true,
+  codePostal: true,
+  district: true,
+  ligue: true,
+  logoUrl: true,
+  statutVerification: true,
+  latitude: true,
+  longitude: true,
+} as const;
+
 export async function fetchAnnonceById(id: string) {
   return prisma.annonce.findUnique({
     where: { id },
-    include: { equipe: { include: { club: true } }, club: true, contacts: true },
+    include: {
+      equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } },
+      club: { select: PUBLIC_CLUB_SELECT },
+    },
   });
 }
 
@@ -64,7 +80,7 @@ export async function searchAnnonces(params: SearchParams) {
 
   const rows = await prisma.annonce.findMany({
     where,
-    include: { equipe: { include: { club: true } }, club: true },
+    include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
     orderBy: { date: "asc" },
   });
 
@@ -112,7 +128,17 @@ export async function fetchPendingClubs() {
 export async function fetchClubProfile(id: string) {
   return prisma.club.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      nom: true,
+      ville: true,
+      codePostal: true,
+      district: true,
+      ligue: true,
+      logoUrl: true,
+      role: true,
+      statutVerification: true,
+      createdAt: true,
       equipes: { orderBy: { categorie: "asc" } },
       annonces: {
         where: { statut: "ouvert", date: { gte: todayISO() } },
@@ -125,6 +151,8 @@ export async function fetchClubProfile(id: string) {
 
 // Conversations du club (demandeur ou destinataire) triées par dernier message.
 // Chaque conversation = un ContactLog lié à une annonce.
+// On ne charge que le dernier message pour éviter de ramener tout l'historique
+// dans la liste (optimisation + protection DoS).
 export async function fetchConversations(clubId: string) {
   return prisma.contactLog.findMany({
     where: {
@@ -134,7 +162,7 @@ export async function fetchConversations(clubId: string) {
       annonce: { include: { equipe: true } },
       demandeur: { select: { id: true, nom: true, logoUrl: true } },
       destinataire: { select: { id: true, nom: true, logoUrl: true } },
-      messages: { orderBy: { createdAt: "asc" } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { createdAt: "desc" },
   });
