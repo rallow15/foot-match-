@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { searchAnnonces } from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
+import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
 import { SearchFilters } from "@/components/SearchFilters";
 
@@ -28,7 +29,8 @@ export default async function Home({
     rayon: get("rayon"),
   };
 
-  const annonces = await searchAnnonces(params);
+  const [annonces, club] = await Promise.all([searchAnnonces(params), getCurrentClub()]);
+  const proposeHref = club ? "/dashboard/annonces/nouvelle" : "/inscription";
 
   const lat = parseFloat(params.latitude ?? "");
   const lng = parseFloat(params.longitude ?? "");
@@ -53,7 +55,7 @@ export default async function Home({
             <Link href="#rechercher" className="btn-accent">
               Rechercher un match
             </Link>
-            <Link href="/inscription" className="btn-ghost">
+            <Link href={proposeHref} className="btn-ghost">
               Proposer un match
             </Link>
           </div>
@@ -94,7 +96,7 @@ export default async function Home({
             <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
             <p className="mt-2 text-muted">
               Élargissez la recherche ou{" "}
-              <Link href="/inscription" className="text-accent hover:underline">
+              <Link href={proposeHref} className="text-accent hover:underline">
                 proposez la vôtre
               </Link>{" "}
               — un club près de chez vous la verra peut-être.
