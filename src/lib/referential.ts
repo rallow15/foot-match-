@@ -64,11 +64,11 @@ export const DOM_EXT_LABEL: Record<DomExt, string> = {
 };
 
 // Statut d'annonce
-export const STATUT_ANNONCE = ["ouvert", "pourvu", "annule"] as const;
+export const STATUT_ANNONCE = ["ouvert", "confirme", "annule"] as const;
 export type StatutAnnonce = (typeof STATUT_ANNONCE)[number];
 export const STATUT_ANNONCE_LABEL: Record<StatutAnnonce, string> = {
   ouvert: "Ouvert",
-  pourvu: "Pourvu",
+  confirme: "Confirmé",
   annule: "Annulé",
 };
 

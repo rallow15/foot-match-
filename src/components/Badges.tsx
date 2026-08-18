@@ -3,7 +3,7 @@ import { STATUT_VERIF_LABEL, STATUT_ANNONCE_LABEL } from "@/lib/referential";
 export function StatutAnnonceBadge({ statut }: { statut: string }) {
   const label = STATUT_ANNONCE_LABEL[statut as keyof typeof STATUT_ANNONCE_LABEL] ?? statut;
   if (statut === "ouvert") return <span className="chip-accent">{label}</span>;
-  if (statut === "pourvu") return <span className="chip-muted">{label}</span>;
+  if (statut === "confirme") return <span className="chip-muted">{label}</span>;
   return <span className="chip-danger">{label}</span>;
 }
 

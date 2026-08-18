@@ -19,8 +19,7 @@ export default async function NouvelleAnnoncePage() {
       <h1 className="headline title-bar mt-1 text-3xl text-paper">Nouvelle annonce</h1>
       <p className="mt-4 max-w-xl text-sm text-muted">
         Décrivez le match que vous cherchez. Il apparaîtra dans les résultats de
-        recherche des autres clubs. Marquez-le « Pourvu » une fois un adversaire
-        trouvé.
+        recherche des autres clubs. Confirmez-le une fois un adversaire trouvé.
       </p>
       <div className="mt-6">
         <AnnonceForm equipes={equipes} mode="create" />

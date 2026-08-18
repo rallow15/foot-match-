@@ -15,6 +15,9 @@ export const LIMITS = {
   NOTE_MAX: 2000,
   MESSAGE_MAX: 2000,
   REFUS_MOTIF_MAX: 500,
+  ADVERSAIRE_NOM_MAX: 100,
+  SCORE_MAX: 99,
+  COMMENTAIRE_MAX: 500,
   PASSWORD_MIN: 8,
   PASSWORD_MAX: 128, // prévention DoS bcrypt
 } as const;

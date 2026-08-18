@@ -85,17 +85,32 @@ model Annonce {
   arbitreDispo    Boolean  @default(false)
   niveauSouhaite  String?
   note            String?
-  // ouvert | pourvu | annule
+  // ouvert | confirme | annule
   statut          String   @default("ouvert")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   contacts        ContactLog[]
+  matchResult     MatchResult?
 
   @@index([equipeId])
   @@index([clubId])
   @@index([statut])
   @@index([date])
+}
+
+model MatchResult {
+  id              String   @id @default(cuid())
+  annonceId       String   @unique
+  annonce         Annonce  @relation(fields: [annonceId], references: [id], onDelete: Cascade)
+  adversaireNom   String?
+  scoreDomicile   Int?
+  scoreExterieur  Int?
+  commentaire     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([annonceId])
 }
 
 model Session {
