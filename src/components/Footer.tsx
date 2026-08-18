@@ -17,6 +17,7 @@ export function Footer() {
           <p className="eyebrow mb-3">Plateforme</p>
           <ul className="space-y-2 text-sm text-muted">
             <li><Link href="/annonces" className="hover:text-paper">Rechercher un match</Link></li>
+            <li><Link href="/matchs-confirmees" className="hover:text-paper">Matchs confirmés</Link></li>
             <li><Link href="/inscription" className="hover:text-paper">Inscrire mon club</Link></li>
             <li><Link href="/comment-ca-marche" className="hover:text-paper">Comment ça marche</Link></li>
           </ul>
