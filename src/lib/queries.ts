@@ -122,3 +122,56 @@ export async function fetchClubProfile(id: string) {
     },
   });
 }
+
+// Conversations du club (demandeur ou destinataire) triées par dernier message.
+// Chaque conversation = un ContactLog lié à une annonce.
+export async function fetchConversations(clubId: string) {
+  return prisma.contactLog.findMany({
+    where: {
+      OR: [{ demandeurClubId: clubId }, { destinataireId: clubId }],
+    },
+    include: {
+      annonce: { include: { equipe: true } },
+      demandeur: { select: { id: true, nom: true, logoUrl: true } },
+      destinataire: { select: { id: true, nom: true, logoUrl: true } },
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+// Nombre de conversations avec des messages non lus par le club.
+export async function countUnreadConversations(clubId: string): Promise<number> {
+  const conversations = await prisma.contactLog.findMany({
+    where: {
+      OR: [{ demandeurClubId: clubId }, { destinataireId: clubId }],
+    },
+    include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+
+  let count = 0;
+  for (const c of conversations) {
+    const lastMessage = c.messages[0];
+    if (!lastMessage) continue;
+    if (lastMessage.auteurClubId === clubId) continue;
+    const readAt = c.demandeurClubId === clubId ? c.demandeurReadAt : c.destinataireReadAt;
+    if (!readAt || lastMessage.createdAt > readAt) count++;
+  }
+  return count;
+}
+
+// Récupère une conversation si le club en est membre.
+export async function fetchConversation(contactLogId: string, clubId: string) {
+  return prisma.contactLog.findFirst({
+    where: {
+      id: contactLogId,
+      OR: [{ demandeurClubId: clubId }, { destinataireId: clubId }],
+    },
+    include: {
+      annonce: { include: { equipe: true, club: { select: { id: true, nom: true } } } },
+      demandeur: { select: { id: true, nom: true, logoUrl: true } },
+      destinataire: { select: { id: true, nom: true, logoUrl: true } },
+      messages: { include: { auteur: { select: { id: true, nom: true, logoUrl: true } } }, orderBy: { createdAt: "asc" } },
+    },
+  });
+}

@@ -25,6 +25,7 @@ export default async function DashboardPage({
 
   const sp = await searchParams;
   const welcome = "welcome" in sp;
+  const equipeErr = "equipe_err" in sp;
   const isValide = club.statutVerification === "valide";
 
   const [equipes, annonces] = await Promise.all([
@@ -49,13 +50,25 @@ export default async function DashboardPage({
         </div>
         <div className="flex flex-col items-end gap-2">
           <StatutVerifBadge statut={club.statutVerification} />
-          <Link href="/dashboard/profil" className="text-xs text-muted hover:text-accent">
-            Profil & logo →
-          </Link>
+          <div className="flex gap-3 text-xs">
+            <Link href="/dashboard/messages" className="text-muted hover:text-accent">
+              Messages →
+            </Link>
+            <Link href="/dashboard/profil" className="text-muted hover:text-accent">
+              Profil & logo →
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Bannière statut */}
+      {equipeErr && (
+        <div className="card mt-6 border-danger/40 p-4 text-sm text-paper">
+          <span className="font-display uppercase text-danger">Suppression impossible.</span>{" "}
+          Cette équipe a encore des annonces ouvertes. Marquez-les « pourvu » /
+          « annulé » (ou supprimez-les) avant de retirer l&apos;équipe.
+        </div>
+      )}
       {welcome && (
         <div className="card mt-6 border-accent/40 p-4 text-sm text-paper">
           <span className="font-display uppercase text-accent">Compte créé.</span>{" "}

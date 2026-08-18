@@ -622,6 +622,14 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
         demandeurClubId: club.id,
         destinataireId: annonce.clubId,
         message: message || null,
+        messages: message
+          ? {
+              create: {
+                auteurClubId: club.id,
+                contenu: message,
+              },
+            }
+          : undefined,
       },
     });
     created = true;
@@ -646,10 +654,91 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
   }
 
   revalidatePath(`/annonces/${annonce.id}`);
+  revalidatePath("/dashboard/messages");
   // Coordonnées du club annonceur révélées au demandeur uniquement après une
   // mise en relation effective (cf. PRD). Elles proviennent du serveur, jamais
   // du client — évite la fuite via les props du composant avant contact.
   return { ok: true, tel: annonce.club.telephone, email: annonce.club.email };
+}
+
+/* ---------------- Chat / Messages ---------------- */
+
+export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const contactLogId = String(formData.get("contactLogId") ?? "");
+  const contenu = String(formData.get("contenu") ?? "").trim();
+
+  if (!contactLogId) return { error: "Conversation invalide." };
+  if (!contenu) return { error: "Le message ne peut pas être vide." };
+  const lengthCheck = validateLength(contenu, "Message", LIMITS.MESSAGE_MAX);
+  if (!lengthCheck.valid) return { error: lengthCheck.error! };
+
+  const conversation = await prisma.contactLog.findFirst({
+    where: {
+      id: contactLogId,
+      OR: [{ demandeurClubId: club.id }, { destinataireId: club.id }],
+    },
+    include: { annonce: { include: { equipe: true, club: { select: { email: true, nom: true } } } }, demandeur: true, destinataire: true },
+  });
+  if (!conversation) return { error: "Conversation introuvable." };
+
+  await prisma.message.create({
+    data: {
+      contactLogId,
+      auteurClubId: club.id,
+      contenu,
+    },
+  });
+
+  // Marque comme lu par l'auteur (logique : il vient d'écrire).
+  const isDemandeur = conversation.demandeurClubId === club.id;
+  await prisma.contactLog.update({
+    where: { id: contactLogId },
+    data: isDemandeur ? { demandeurReadAt: new Date() } : { destinataireReadAt: new Date() },
+  });
+
+  // Email de notification au destinataire (fire-and-forget).
+  const destinataire = isDemandeur ? conversation.destinataire : conversation.demandeur;
+  await sendContactNotification({
+    to: destinataire.email,
+    annonceLabel: `${conversation.annonce.equipe.categorie} · ${conversation.annonce.date} · ${conversation.annonce.heure}`,
+    demandeurClub: club.nom,
+    demandeurEmail: club.email,
+    demandeurTelephone: club.telephone,
+    message: contenu,
+  }).catch(() => {});
+
+  await touchActivity(club.id);
+  revalidatePath(`/dashboard/messages/${contactLogId}`);
+  revalidatePath("/dashboard/messages");
+  return { ok: true };
+}
+
+export async function markConversationReadAction(formData: FormData): Promise<void> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return;
+
+  const contactLogId = String(formData.get("contactLogId") ?? "");
+  if (!contactLogId) return;
+
+  const conversation = await prisma.contactLog.findFirst({
+    where: {
+      id: contactLogId,
+      OR: [{ demandeurClubId: club.id }, { destinataireId: club.id }],
+    },
+  });
+  if (!conversation) return;
+
+  const isDemandeur = conversation.demandeurClubId === club.id;
+  await prisma.contactLog.update({
+    where: { id: contactLogId },
+    data: isDemandeur ? { demandeurReadAt: new Date() } : { destinataireReadAt: new Date() },
+  });
+
+  revalidatePath(`/dashboard/messages/${contactLogId}`);
+  revalidatePath("/dashboard/messages");
 }
 
 /* ---------------- Admin (vérification licences) ---------------- */

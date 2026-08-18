@@ -45,6 +45,7 @@ model Club {
   annonces             Annonce[]   @relation("AnnoncePar")
   contactsEmis         ContactLog[] @relation("Demandeur")
   contactsRecus        ContactLog[] @relation("Destinataire")
+  messages             Message[]    @relation("AuteurMessage")
   passwordResetTokens  PasswordResetToken[]
 
   @@index([statutVerification])
@@ -111,23 +112,45 @@ model Session {
 }
 
 model ContactLog {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   annonceId       String
-  annonce         Annonce  @relation(fields: [annonceId], references: [id], onDelete: Cascade)
+  annonce         Annonce    @relation(fields: [annonceId], references: [id], onDelete: Cascade)
   demandeurClubId String
-  demandeur       Club     @relation("Demandeur", fields: [demandeurClubId], references: [id], onDelete: Cascade)
+  demandeur       Club       @relation("Demandeur", fields: [demandeurClubId], references: [id], onDelete: Cascade)
   destinataireId  String
-  destinataire    Club     @relation("Destinataire", fields: [destinataireId], references: [id], onDelete: Cascade)
+  destinataire    Club       @relation("Destinataire", fields: [destinataireId], references: [id], onDelete: Cascade)
+  // Message initial de la mise en relation (conservé pour compatibilité ; les
+  // réponses sont stockées dans Message).
   message         String?
+  // Dernier message lu par le demandeur / destinataire (pour les badges non-lus).
+  demandeurReadAt DateTime?
+  destinataireReadAt DateTime?
   // contact shown to demandeur after request
-  createdAt       DateTime @default(now())
+  createdAt       DateTime   @default(now())
+
+  messages        Message[]
 
   @@index([annonceId])
   @@index([demandeurClubId])
+  @@index([destinataireId])
   // Idempotence de la mise en relation : un même demandeur ne contacte une
   // annonce qu'une fois. Atomicité au niveau base (anti race + anti
   // email-bombing : pas de renvoi de notification sur re-demande).
   @@unique([demandeurClubId, annonceId])
+}
+
+model Message {
+  id            String     @id @default(cuid())
+  contactLogId  String
+  contactLog    ContactLog @relation(fields: [contactLogId], references: [id], onDelete: Cascade)
+  auteurClubId  String
+  auteur        Club       @relation("AuteurMessage", fields: [auteurClubId], references: [id], onDelete: Cascade)
+  contenu       String
+  createdAt     DateTime   @default(now())
+
+  @@index([contactLogId])
+  @@index([auteurClubId])
+  @@index([createdAt])
 }
 
 model PasswordResetToken {
@@ -144,4 +167,20 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([clubId])
+}
+
+// Compteur de rate limiting par IP, partagé entre instances (Postgres).
+// Remplace le Map in-memory qui n'était valable qu'en mono-instance : sur
+// Fluid Compute / serverless, chaque instance aurait eu son propre compteur et
+// un attaquant répartissant ses requêtes aurait contourné les seuils.
+model RateLimit {
+  id        String   @id @default(cuid())
+  // Clé = `${action}:${ip}` — un compteur par action et par IP.
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+
+  // Nettoyage périodique des fenêtres expirées.
+  @@index([resetAt])
 }
