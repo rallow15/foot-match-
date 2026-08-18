@@ -13,6 +13,12 @@ function transporter() {
   });
 }
 
+function fallbackLog(type: string) {
+  // En dev les logs Vercel sont privés, en prod ce fallback ne doit pas s'activer.
+  // On évite d'écrire le destinataire ou le corps du message pour ne pas logger de PII.
+  console.log(`[MAIL · fallback · ${type}] aucun SMTP configuré — email non envoyé.`);
+}
+
 export interface ContactMailData {
   to: string; // club annonceur
   annonceLabel: string;
@@ -41,12 +47,7 @@ ${data.message ? `Message du demandeur :\n${data.message}\n\n` : ""}Vous pouvez 
 
   const t = transporter();
   if (!t) {
-    // Pas de SMTP configuré : on logge côté serveur (visible en dev).
-    console.log("\n[MAIL · fallback console] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("CONTACT");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -73,12 +74,7 @@ Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot
 
   const t = transporter();
   if (!t) {
-    // Pas de SMTP configuré : on logge côté serveur (visible en dev / logs Vercel).
-    console.log("\n[MAIL · fallback console · RESET] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("RESET");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -111,12 +107,7 @@ Se connecter : ${appUrl}/login
 
   const t = transporter();
   if (!t) {
-    // Pas de SMTP configuré : on logge côté serveur (visible en dev / logs Vercel).
-    console.log("\n[MAIL · fallback console · INSCRIPTION] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("INSCRIPTION");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -146,12 +137,7 @@ Accéder à mon espace : ${appUrl}/dashboard
 
   const t = transporter();
   if (!t) {
-    // Pas de SMTP configuré : on logge côté serveur (visible en dev / logs Vercel).
-    console.log("\n[MAIL · fallback console · VALIDATION] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("VALIDATION");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -182,12 +168,7 @@ de dirigeant / éducateur valide : ${appUrl}/inscription
 
   const t = transporter();
   if (!t) {
-    // Pas de SMTP configuré : on logge côté serveur (visible en dev / logs Vercel).
-    console.log("\n[MAIL · fallback console · REFUS] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("REFUS");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -218,11 +199,7 @@ ${appUrl}/login
 
   const t = transporter();
   if (!t) {
-    console.log("\n[MAIL · fallback console · PASSWORD CHANGED] -------------------------");
-    console.log(`To: ${data.to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("PASSWORD CHANGED");
     return;
   }
   await t.sendMail({ from, to: data.to, subject, text });
@@ -261,11 +238,7 @@ l'espace admin : ${appUrl}/admin
 
   const t = transporter();
   if (!t) {
-    console.log("\n[MAIL · fallback console · ADMIN INSCRIPTION] -------------------------");
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(text);
-    console.log("[MAIL] -------------------------------------------\n");
+    fallbackLog("ADMIN INSCRIPTION");
     return;
   }
   await t.sendMail({ from, to, subject, text });

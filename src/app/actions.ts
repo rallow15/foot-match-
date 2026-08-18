@@ -728,31 +728,6 @@ export async function sendMessageAction(_prev: ActionState, formData: FormData):
   return { ok: true };
 }
 
-export async function markConversationReadAction(formData: FormData): Promise<void> {
-  const club = await getCurrentClub();
-  if (!club || club.role !== "club") return;
-
-  const contactLogId = String(formData.get("contactLogId") ?? "");
-  if (!contactLogId) return;
-
-  const conversation = await prisma.contactLog.findFirst({
-    where: {
-      id: contactLogId,
-      OR: [{ demandeurClubId: club.id }, { destinataireId: club.id }],
-    },
-  });
-  if (!conversation) return;
-
-  const isDemandeur = conversation.demandeurClubId === club.id;
-  await prisma.contactLog.update({
-    where: { id: contactLogId },
-    data: isDemandeur ? { demandeurReadAt: new Date() } : { destinataireReadAt: new Date() },
-  });
-
-  revalidatePath(`/dashboard/messages/${contactLogId}`);
-  revalidatePath("/dashboard/messages");
-}
-
 /* ---------------- Admin (vérification licences) ---------------- */
 
 export async function adminValidateAction(formData: FormData): Promise<void> {

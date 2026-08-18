@@ -119,6 +119,21 @@ export async function fetchPendingClubs() {
   return prisma.club.findMany({
     where: { role: "club", statutVerification: "en_attente" },
     orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      nom: true,
+      ville: true,
+      codePostal: true,
+      district: true,
+      ligue: true,
+      telephone: true,
+      email: true,
+      logoUrl: true,
+      licenceFichierUrl: true,
+      statutVerification: true,
+      refusMotif: true,
+      createdAt: true,
+    },
   });
 }
 

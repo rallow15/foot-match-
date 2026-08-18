@@ -72,7 +72,6 @@ export async function getSession() {
   if (!token) return null;
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashOpaqueToken(token) },
-    include: { club: true },
   });
   if (!session) return null;
   if (session.expiresAt < new Date()) {
@@ -82,9 +81,35 @@ export async function getSession() {
   return session;
 }
 
+// Champs club exposés au code métier. EXCLUT explicitement passwordHash,
+// lockedUntil, failedLoginAttempts et autres champs sensibles.
+const CLUB_PUBLIC_SELECT = {
+  id: true,
+  nom: true,
+  ville: true,
+  codePostal: true,
+  latitude: true,
+  longitude: true,
+  ligue: true,
+  district: true,
+  telephone: true,
+  email: true,
+  logoUrl: true,
+  role: true,
+  statutVerification: true,
+  refusMotif: true,
+  createdAt: true,
+  derniereActiviteAt: true,
+} as const;
+
 export async function getCurrentClub() {
-  const s = await getSession();
-  return s?.club ?? null;
+  const session = await getSession();
+  if (!session) return null;
+  const club = await prisma.club.findUnique({
+    where: { id: session.clubId },
+    select: CLUB_PUBLIC_SELECT,
+  });
+  return club ?? null;
 }
 
 export async function logout(): Promise<void> {

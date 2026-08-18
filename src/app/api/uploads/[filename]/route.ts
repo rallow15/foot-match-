@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { prisma } from "@/lib/db";
 
 // Sert une LICENCE (fichier privé) stockée dans le bucket Supabase "licences".
 // Authentification + autorisation requises : seuls l'admin (consulte toute
@@ -28,8 +29,15 @@ export async function GET(
   const { filename } = await params;
 
   // Autorisation : admin (toute licence) ou propriétaire du fichier.
-  const isOwner = session.club.licenceFichierUrl?.endsWith(`/api/uploads/${filename}`);
-  if (session.club.role !== "admin" && !isOwner) {
+  const club = await prisma.club.findUnique({
+    where: { id: session.clubId },
+    select: { role: true, licenceFichierUrl: true },
+  });
+  if (!club) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+  const isOwner = club.licenceFichierUrl?.endsWith(`/api/uploads/${filename}`);
+  if (club.role !== "admin" && !isOwner) {
     return NextResponse.json({ error: "Interdit" }, { status: 403 });
   }
 
