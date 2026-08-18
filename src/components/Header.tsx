@@ -12,7 +12,8 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "Rechercher" },
+  { href: "/", label: "Accueil" },
+  { href: "/annonces", label: "Rechercher" },
   { href: "/comment-ca-marche", label: "Comment ça marche" },
 ];
 

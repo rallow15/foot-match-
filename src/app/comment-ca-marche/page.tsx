@@ -57,7 +57,7 @@ export default function CommentCaMarchePage() {
       <div className="card mt-10 flex flex-col items-center gap-4 p-8 text-center">
         <p className="headline text-2xl text-paper">Prêt à trouver un adversaire ?</p>
         <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/" className="btn-accent">Rechercher un match</Link>
+          <Link href="/annonces" className="btn-accent">Rechercher un match</Link>
           <Link href="/inscription" className="btn-ghost">Inscrire mon club</Link>
         </div>
       </div>

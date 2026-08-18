@@ -26,7 +26,7 @@ export default async function MessagesPage() {
           <p className="mt-2 text-sm text-muted">
             Contactez un club sur une annonce pour démarrer une conversation.
           </p>
-          <Link href="/" className="btn-accent mt-4 inline-block">Rechercher un match</Link>
+          <Link href="/annonces" className="btn-accent mt-4 inline-block">Rechercher un match</Link>
         </div>
       ) : (
         <ul className="mt-6 space-y-3">

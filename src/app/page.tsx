@@ -1,40 +1,42 @@
 import Link from "next/link";
-import { searchAnnonces } from "@/lib/queries";
-import { haversineKm } from "@/lib/geo";
 import { getCurrentClub } from "@/lib/auth";
-import { AnnonceCard } from "@/components/AnnonceCard";
-import { SearchFilters } from "@/components/SearchFilters";
+import { fetchAnnoncesLanding } from "@/lib/queries";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const sp = await searchParams;
-  const get = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
+export const metadata = {
+  title: "Matchs Amicaux — Trouvez un club pour un match amical",
+  description:
+    "La plateforme qui met en relation les clubs amateurs de football pour organiser des matchs amicaux. Proposez, cherchez, contactez.",
+};
 
-  const params = {
-    categorie: get("categorie"),
-    dateFrom: get("dateFrom"),
-    dateTo: get("dateTo"),
-    niveau: get("niveau"),
-    dom: get("dom"),
-    stade: get("stade"),
-    arbitre: get("arbitre"),
-    ligue: get("ligue"),
-    district: get("district"),
-    ville: get("ville"),
-    latitude: get("latitude"),
-    longitude: get("longitude"),
-    rayon: get("rayon"),
-  };
+export const dynamic = "force-dynamic";
 
-  const [annonces, club] = await Promise.all([searchAnnonces(params), getCurrentClub()]);
+const steps = [
+  {
+    n: "01",
+    title: "Inscrivez votre club",
+    text: "Renseignez votre club, téléversez votre licence et patientez le temps de la vérification manuelle.",
+  },
+  {
+    n: "02",
+    title: "Publiez une annonce",
+    text: "Date, horaire, catégorie, niveau, stade et arbitre : en quelques clics votre recherche est en ligne.",
+  },
+  {
+    n: "03",
+    title: "Trouvez un adversaire",
+    text: "Recherchez parmi les annonces ouvertes et contactez le club qui correspond à vos critères.",
+  },
+  {
+    n: "04",
+    title: "Organisez le match",
+    text: "Le site met en relation, le reste se règle directement par téléphone ou WhatsApp.",
+  },
+];
+
+export default async function Home() {
+  const club = await getCurrentClub();
   const proposeHref = club ? "/dashboard/annonces/nouvelle" : "/inscription";
-
-  const lat = parseFloat(params.latitude ?? "");
-  const lng = parseFloat(params.longitude ?? "");
-  const hasGeo = !Number.isNaN(lat) && !Number.isNaN(lng);
+  const latest = await fetchAnnoncesLanding(3);
 
   return (
     <>
@@ -47,12 +49,11 @@ export default async function Home({
             <span className="block text-accent">Organisez un match.</span>
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-            Proposez un match amical ou cherchez parmi les annonces publiées par les
-            clubs près de chez vous. Filtrez par catégorie, date et distance — puis
-            contactez le club directement.
+            La plateforme dédiée aux clubs amateurs de football pour publier,
+            rechercher et organiser des matchs amicaux en toute simplicité.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="#rechercher" className="btn-accent">
+            <Link href="/annonces" className="btn-accent">
               Rechercher un match
             </Link>
             <Link href={proposeHref} className="btn-ghost">
@@ -77,42 +78,78 @@ export default async function Home({
         </div>
       </section>
 
-      {/* RECHERCHE */}
-      <section id="rechercher" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <h2 className="headline title-bar text-3xl text-paper">Rechercher un match</h2>
+      {/* COMMENT ÇA MARCHE */}
+      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+        <p className="eyebrow text-accent">Comment ça marche</p>
+        <h2 className="headline mt-2 text-3xl text-paper sm:text-4xl">
+          Quatre étapes pour jouer
+        </h2>
+        <ol className="mt-10 grid gap-5 sm:grid-cols-2">
+          {steps.map((s) => (
+            <li key={s.n} className="card card-hover p-6">
+              <p className="headline text-4xl text-accent">{s.n}</p>
+              <h3 className="headline mt-3 text-xl text-paper">{s.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-        <SearchFilters initial={params} />
+      {/* DERNIERES ANNONCES */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <div>
+              <p className="eyebrow text-accent">Dernières annonces</p>
+              <h2 className="headline mt-2 text-3xl text-paper">
+                Les clubs cherchent un adversaire
+              </h2>
+            </div>
+            <Link href="/annonces" className="btn-ghost text-sm">
+              Voir toutes les annonces →
+            </Link>
+          </div>
 
-        {/* RÉSULTATS */}
-        <div className="mt-10 flex items-baseline justify-between">
-          <p className="text-sm text-muted">
-            <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
-            {annonces.length > 1 ? "annonces ouvertes" : "annonce ouverte"}
-          </p>
+          {latest.length === 0 ? (
+            <p className="mt-6 text-muted">Aucune annonce pour le moment.</p>
+          ) : (
+            <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {latest.map((a) => (
+                <li key={a.id} className="card card-hover p-5">
+                  <Link href={`/annonces/${a.id}`} className="group block">
+                    <p className="eyebrow">{a.equipe.categorie}</p>
+                    <p className="headline mt-1 text-xl text-paper group-hover:text-accent">
+                      {a.equipe.niveau ?? "Niveau non précisé"}
+                    </p>
+                    <p className="mt-2 text-sm text-muted">
+                      {a.date} · {a.heure} · {a.domicileExterieur}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-2">{a.club.nom} · {a.club.ville}</p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+      </section>
 
-        {annonces.length === 0 ? (
-          <div className="card mt-6 p-12 text-center">
-            <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
-            <p className="mt-2 text-muted">
-              Élargissez la recherche ou{" "}
-              <Link href={proposeHref} className="text-accent hover:underline">
-                proposez la vôtre
-              </Link>{" "}
-              — un club près de chez vous la verra peut-être.
-            </p>
+      {/* CTA FINAL */}
+      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+        <div className="card flex flex-col items-center gap-4 p-8 text-center">
+          <p className="headline text-2xl text-paper">Prêt à trouver un adversaire ?</p>
+          <p className="max-w-lg text-sm text-muted">
+            Rejoignez les clubs amateurs qui utilisent Matchs Amicaux pour
+            organiser leurs matchs amicaux sans friction.
+          </p>
+          <div className="mt-2 flex flex-wrap justify-center gap-3">
+            <Link href="/annonces" className="btn-accent">
+              Rechercher un match
+            </Link>
+            <Link href={proposeHref} className="btn-ghost">
+              Proposer un match
+            </Link>
           </div>
-        ) : (
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {annonces.map((a) => (
-              <AnnonceCard
-                key={a.id}
-                annonce={a}
-                distanceKm={hasGeo ? haversineKm(lat, lng, a.club.latitude, a.club.longitude) : null}
-              />
-            ))}
-          </div>
-        )}
+        </div>
       </section>
     </>
   );

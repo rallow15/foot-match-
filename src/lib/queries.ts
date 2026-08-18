@@ -100,6 +100,16 @@ export async function searchAnnonces(params: SearchParams) {
   return filtered;
 }
 
+// Quelques annonces récentes pour la landing page (teaser).
+export async function fetchAnnoncesLanding(limit = 3) {
+  return prisma.annonce.findMany({
+    where: { statut: "ouvert", date: { gte: todayISO() } },
+    include: { equipe: true, club: { select: { id: true, nom: true, ville: true } } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
 export async function fetchMyAnnonces(clubId: string) {
   return prisma.annonce.findMany({
     where: { clubId },
