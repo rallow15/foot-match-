@@ -20,13 +20,18 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ filename: string }> },
 ) {
+  const { filename } = await params;
+
+  // Protection contre le path traversal (avant tout accès DB / Storage)
+  if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    return NextResponse.json({ error: "Nom de fichier invalide" }, { status: 400 });
+  }
+
   // Authentification requise
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
-
-  const { filename } = await params;
 
   // Autorisation : admin (toute licence) ou propriétaire du fichier.
   const club = await prisma.club.findUnique({
@@ -41,11 +46,6 @@ export async function GET(
     return NextResponse.json({ error: "Interdit" }, { status: 403 });
   }
 
-  // Protection contre le path traversal
-  if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
-    return NextResponse.json({ error: "Nom de fichier invalide" }, { status: 400 });
-  }
-
   const ext = "." + (filename.split(".").pop() ?? "").toLowerCase();
   const contentType = MIME_MAP[ext];
   if (!contentType) {
@@ -58,10 +58,14 @@ export async function GET(
   }
 
   const bytes = await data.arrayBuffer();
+  // Sanitize du nom pour l'en-tête Content-Disposition (défense en profondeur).
+  const safeFilename = filename.replace(/["\r\n]/g, "_");
+  // Les licences sont servies en attachment pour réduire la surface d'attaque
+  // du visualiseur PDF intégré (JS embarqué possible selon le navigateur).
   return new NextResponse(bytes, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
       "Cache-Control": "private, max-age=3600",
     },
   });

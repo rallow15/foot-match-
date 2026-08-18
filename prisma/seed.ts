@@ -29,6 +29,19 @@ function day(offset: number): string {
 }
 
 async function main() {
+  // Garde anti-accident : le seed fait un deleteMany() sur toutes les tables
+  // (clubs, équipes, annonces…). En production, l'exécuter par erreur détruirait
+  // toutes les inscriptions réelles. On refuse donc en production sauf si
+  // l'opérateur l'exprime explicitement via ALLOW_DESTRUCTIVE_SEED=1.
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_DESTRUCTIVE_SEED !== "1"
+  ) {
+    throw new Error(
+      "Refus d'exécuter le seed en production (destructeur). Définir ALLOW_DESTRUCTIVE_SEED=1 pour forcer.",
+    );
+  }
+
   console.log("→ Nettoyage…");
   await prisma.contactLog.deleteMany();
   await prisma.session.deleteMany();

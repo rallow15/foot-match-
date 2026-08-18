@@ -20,6 +20,7 @@ export default async function AdminPage() {
       where: { role: "club", statutVerification: { in: ["valide", "refuse"] } },
       orderBy: { derniereActiviteAt: "desc" },
       take: 8,
+      select: { id: true, nom: true, statutVerification: true, refusMotif: true, derniereActiviteAt: true },
     }),
   ]);
 

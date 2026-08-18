@@ -1,5 +1,8 @@
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
+// CSP par nonce : rendu dynamique requis pour l'injection du nonce.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Mot de passe oublié — Matchs Amicaux",
 };

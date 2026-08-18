@@ -61,6 +61,10 @@ export type ActionState = {
 // si le déploiement l'exprime via TRUST_PROXY_HEADERS=1 (cf. .env.example).
 // Sans cela, on renvoie "unknown" : le rate-limiting devient par hypothèse
 // conservateur (toutes les requêtes partagent le même seau) plutôt que spoofable.
+// ATTENTION : en production non-Vercel, ce comportement regroupe tous les visiteurs
+// dans le même seau et un attaquant peut bloquer les actions pour tout le monde.
+// Déployer impérativement derrière un reverse proxy de confiance avec
+// TRUST_PROXY_HEADERS=1, ou utiliser Vercel qui fournit x-vercel-forwarded-for.
 async function getClientIp(): Promise<string> {
   const h = await headers();
   const vercel = h.get("x-vercel-forwarded-for");
@@ -144,7 +148,10 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     where: { email },
     select: { id: true },
   });
-  if (existing) return { error: "Un compte existe déjà avec cet email." };
+  if (existing) {
+    // Message constant : ne pas révéler l'existence du compte (anti-énumération).
+    return { error: "L'inscription n'a pas pu être finalisée." };
+  }
 
   // Géocodage de la ville (avant l'upload, idem : on évite un fichier orphelin
   // si la ville est introuvable).
@@ -303,7 +310,7 @@ export async function requestPasswordResetAction(_prev: ActionState, formData: F
 
   // On récupère le club AVANT le rate-limit pour pouvoir limiter par compte.
   // L'existence du compte n'est pas révélée au client (même réponse ok).
-  const club = await prisma.club.findUnique({ where: { email } });
+  const club = await prisma.club.findUnique({ where: { email }, select: { id: true } });
   if (!club) return RESET_REQUEST_OK;
 
   // Rate limiting par IP ET par compte (anti email-bombing, y compris distribué).
@@ -360,7 +367,7 @@ export async function resetPasswordAction(_prev: ActionState, formData: FormData
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash: hashOpaqueToken(token) },
-    include: { club: true },
+    include: { club: { select: { id: true, email: true, nom: true } } },
   });
   if (!record) return { error: "Lien invalide ou expiré." };
   if (record.usedAt) {
@@ -506,6 +513,8 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
 export async function updateAnnonceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const club = await getCurrentClub();
   if (!club || club.role !== "club") return { error: "Non autorisé." };
+  if (club.statutVerification !== "valide")
+    return { error: "Votre compte doit être validé pour modifier une annonce." };
   const id = String(formData.get("id") ?? "");
 
   const annonce = await prisma.annonce.findFirst({ where: { id, clubId: club.id } });
@@ -535,8 +544,10 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
     if (!check.valid) return { error: check.error! };
   }
 
-  await prisma.annonce.update({
-    where: { id },
+  // La vérification d'ownership est refaite dans la requête d'écriture
+  // (updateMany) pour éviter toute TOCTOU/race condition.
+  const { count } = await prisma.annonce.updateMany({
+    where: { id, clubId: club.id },
     data: {
       date,
       heure,
@@ -549,6 +560,7 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
       note: note || null,
     },
   });
+  if (count === 0) return { error: "Annonce introuvable." };
   revalidatePath("/");
   revalidatePath("/dashboard");
   redirect("/dashboard");
@@ -556,7 +568,8 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
 
 export async function setAnnonceStatutAction(formData: FormData): Promise<void> {
   const club = await getCurrentClub();
-  if (!club) return;
+  if (!club || club.role !== "club") return;
+  if (club.statutVerification !== "valide") return;
   const id = String(formData.get("id") ?? "");
   const statut = String(formData.get("statut") ?? "");
   if (!STATUT_ANNONCE.includes(statut as never)) return;
@@ -569,7 +582,8 @@ export async function setAnnonceStatutAction(formData: FormData): Promise<void> 
 
 export async function deleteAnnonceAction(formData: FormData): Promise<void> {
   const club = await getCurrentClub();
-  if (!club) return;
+  if (!club || club.role !== "club") return;
+  if (club.statutVerification !== "valide") return;
   const id = String(formData.get("id") ?? "");
   await prisma.annonce.deleteMany({ where: { id, clubId: club.id } });
   revalidatePath("/");
@@ -600,7 +614,7 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
 
   const annonce = await prisma.annonce.findUnique({
     where: { id: annonceId },
-    include: { equipe: true, club: true },
+    include: { equipe: true, club: { select: { id: true, email: true, telephone: true } } },
   });
   if (!annonce || annonce.statut !== "ouvert") return { error: "Annonce non disponible." };
   // Auto-expiration : on ne contacte pas une annonce à date passée (anti
@@ -692,9 +706,22 @@ export async function sendMessageAction(_prev: ActionState, formData: FormData):
       id: contactLogId,
       OR: [{ demandeurClubId: club.id }, { destinataireId: club.id }],
     },
-    include: { annonce: { include: { equipe: true, club: { select: { email: true, nom: true } } } }, demandeur: true, destinataire: true },
+    include: {
+      annonce: {
+        include: { equipe: true, club: { select: { email: true, nom: true } } },
+      },
+      demandeur: { select: { id: true, nom: true, logoUrl: true, email: true } },
+      destinataire: { select: { id: true, nom: true, logoUrl: true, email: true } },
+    },
   });
   if (!conversation) return { error: "Conversation introuvable." };
+
+  // Une fois le contact établi, on autorise la messagerie tant que l'annonce
+  // associée reste ouverte et à venir. Cela évite le harcèlement sur des
+  // annonces périmées ou clôturées.
+  if (conversation.annonce.statut !== "ouvert" || conversation.annonce.date < todayISO()) {
+    return { error: "Cette annonce est clôturée ou expirée : la messagerie est désactivée." };
+  }
 
   await prisma.message.create({
     data: {
@@ -833,9 +860,13 @@ export async function updateProfilAction(_prev: ActionState, formData: FormData)
   if (!isValidEmail(email)) return { error: "Email invalide." };
 
   // Si l'email change, vérifier qu'il n'est pas déjà utilisé par un autre club.
-  if (email !== club.email) {
+  const emailChanged = email !== club.email;
+  if (emailChanged) {
     const existing = await prisma.club.findUnique({ where: { email }, select: { id: true } });
-    if (existing) return { error: "Un compte existe déjà avec cet email." };
+    if (existing) {
+      // Message constant : ne pas révéler l'existence d'un autre compte.
+      return { error: "La mise à jour n'a pas pu être effectuée." };
+    }
   }
 
   // Géocodage pour récupérer la ville normalisée et les coordonnées GPS.
@@ -859,6 +890,15 @@ export async function updateProfilAction(_prev: ActionState, formData: FormData)
     },
   });
   await touchActivity(club.id);
+
+  // Si l'email a changé, on révoque toutes les sessions : un attaquant qui aurait
+  // volé la session ne peut plus la conserver après un changement d'email.
+  if (emailChanged) {
+    await revokeAllSessions(club.id);
+    await logout();
+    revalidatePath("/");
+    redirect("/login?email_changed=1");
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/profil");
@@ -914,7 +954,13 @@ export async function updateLogoAction(_prev: ActionState, formData: FormData): 
     return { error: (e as Error).message };
   }
 
+  // Supprime l'ancien logo du bucket (best-effort) avant de stocker la nouvelle URL.
+  // On garde l'ancienne URL en mémoire pour ne pas la perdre en cas d'échec DB.
+  const oldLogoUrl = club.logoUrl;
   await prisma.club.update({ where: { id: club.id }, data: { logoUrl: url } });
+  if (oldLogoUrl) {
+    await deleteUpload("logo", oldLogoUrl).catch(() => {});
+  }
   await touchActivity(club.id);
 
   revalidatePath("/dashboard");

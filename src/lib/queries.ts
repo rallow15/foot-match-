@@ -214,7 +214,13 @@ export async function fetchConversation(contactLogId: string, clubId: string) {
       annonce: { include: { equipe: true, club: { select: { id: true, nom: true } } } },
       demandeur: { select: { id: true, nom: true, logoUrl: true } },
       destinataire: { select: { id: true, nom: true, logoUrl: true } },
-      messages: { include: { auteur: { select: { id: true, nom: true, logoUrl: true } } }, orderBy: { createdAt: "asc" } },
+      // Limite de protection DoS : 100 derniers messages. L'historique complet
+      // n'est pas nécessaire au rendu initial ; pagination à ajouter si besoin.
+      messages: {
+        include: { auteur: { select: { id: true, nom: true, logoUrl: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      },
     },
   });
 }

@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+// CSP par nonce : rendu dynamique requis pour l'injection du nonce (cf. doc
+// Next 16 CSP). Coût : perte du cache statique sur cette page marketing.
+export const dynamic = "force-dynamic";
+
 const steps = [
   {
     n: "01",

@@ -15,6 +15,7 @@ export default async function ModifierAnnoncePage({
   const club = await getCurrentClub();
   if (!club) redirect("/login");
   if (club.role !== "club") redirect("/admin");
+  if (club.statutVerification !== "valide") redirect("/dashboard");
 
   const annonce = await prisma.annonce.findFirst({ where: { id, clubId: club.id } });
   if (!annonce) notFound();
