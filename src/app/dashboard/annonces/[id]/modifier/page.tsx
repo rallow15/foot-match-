@@ -41,7 +41,6 @@ export default async function ModifierAnnoncePage({
             arbitreDispo: annonce.arbitreDispo,
             niveauSouhaite: annonce.niveauSouhaite ?? "",
             note: annonce.note ?? "",
-            adversaireNom: annonce.adversaireNom ?? "",
           }}
         />
       </div>

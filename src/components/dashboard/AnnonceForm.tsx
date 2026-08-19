@@ -29,7 +29,6 @@ interface AnnonceFormProps {
     arbitreDispo: boolean;
     niveauSouhaite: string;
     note: string;
-    adversaireNom?: string;
   };
 }
 
@@ -155,21 +154,6 @@ export function AnnonceForm({ equipes, mode, annonceId, initial }: AnnonceFormPr
         {niveaux.length === 0 && (
           <p className="mt-1 text-xs text-muted-2">— Pas de niveau défini pour cette catégorie —</p>
         )}
-      </div>
-
-      <div>
-        <label className="label" htmlFor="adversaireNom">Nom de l&apos;adversaire (optionnel)</label>
-        <input
-          id="adversaireNom"
-          name="adversaireNom"
-          type="text"
-          className="input"
-          placeholder="Ex. FC Villeurbanne"
-          defaultValue={initial?.adversaireNom ?? ""}
-        />
-        <p className="mt-1 text-xs text-muted-2">
-          Sera affiché sur la page des matchs confirmés si vous marquez l&apos;annonce comme confirmée.
-        </p>
       </div>
 
       <div>

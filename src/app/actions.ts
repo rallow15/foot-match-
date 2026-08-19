@@ -462,7 +462,6 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
   const arbitreDispo = formData.get("arbitreDispo") === "on";
   const niveauSouhaite = String(formData.get("niveauSouhaite") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  const adversaireNom = String(formData.get("adversaireNom") ?? "").trim();
 
   if (!equipeId || !date || !heure) return { error: "Équipe, date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
@@ -478,11 +477,6 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
     const check = validateLength(note, "Note", LIMITS.NOTE_MAX);
     if (!check.valid) return { error: check.error! };
   }
-  if (adversaireNom) {
-    const check = validateLength(adversaireNom, "Nom de l'adversaire", LIMITS.ADVERSAIRE_NOM_MAX);
-    if (!check.valid) return { error: check.error! };
-  }
-
   // l'équipe doit appartenir au club
   const equipe = await prisma.equipe.findFirst({ where: { id: equipeId, clubId: club.id } });
   if (!equipe) return { error: "Équipe introuvable." };
@@ -506,7 +500,6 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
       arbitreDispo,
       niveauSouhaite: niveauSouhaite || null,
       note: note || null,
-      adversaireNom: adversaireNom || null,
       statut: "ouvert",
     },
   });
@@ -534,7 +527,6 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
   const arbitreDispo = formData.get("arbitreDispo") === "on";
   const niveauSouhaite = String(formData.get("niveauSouhaite") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  const adversaireNom = String(formData.get("adversaireNom") ?? "").trim();
 
   if (!date || !heure) return { error: "Date et horaire sont obligatoires." };
   if (!isValidDate(date)) return { error: "Date invalide (format AAAA-MM-JJ)." };
@@ -550,11 +542,6 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
     const check = validateLength(note, "Note", LIMITS.NOTE_MAX);
     if (!check.valid) return { error: check.error! };
   }
-  if (adversaireNom) {
-    const check = validateLength(adversaireNom, "Nom de l'adversaire", LIMITS.ADVERSAIRE_NOM_MAX);
-    if (!check.valid) return { error: check.error! };
-  }
-
   // La vérification d'ownership est refaite dans la requête d'écriture
   // (updateMany) pour éviter toute TOCTOU/race condition.
   const { count } = await prisma.annonce.updateMany({
@@ -569,7 +556,6 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
       arbitreDispo,
       niveauSouhaite: niveauSouhaite || null,
       note: note || null,
-      adversaireNom: adversaireNom || null,
     },
   });
   if (count === 0) return { error: "Annonce introuvable." };
@@ -585,7 +571,21 @@ export async function setAnnonceStatutAction(formData: FormData): Promise<void> 
   const id = String(formData.get("id") ?? "");
   const statut = String(formData.get("statut") ?? "");
   if (!STATUT_ANNONCE.includes(statut as never)) return;
-  await prisma.annonce.updateMany({ where: { id, clubId: club.id }, data: { statut } });
+
+  const data: Record<string, unknown> = { statut };
+  if (statut === "confirme") {
+    const adversaireNom = String(formData.get("adversaireNom") ?? "").trim();
+    if (!adversaireNom) {
+      redirect("/dashboard?adversaire_err=1");
+    }
+    const check = validateLength(adversaireNom, "Nom de l'adversaire", LIMITS.ADVERSAIRE_NOM_MAX);
+    if (!check.valid) {
+      redirect("/dashboard?adversaire_err=1");
+    }
+    data.adversaireNom = adversaireNom;
+  }
+
+  await prisma.annonce.updateMany({ where: { id, clubId: club.id }, data });
   await touchActivity(club.id);
   revalidatePath("/");
   revalidatePath("/dashboard");

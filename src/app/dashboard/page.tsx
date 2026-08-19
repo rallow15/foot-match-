@@ -26,6 +26,7 @@ export default async function DashboardPage({
   const sp = await searchParams;
   const welcome = "welcome" in sp;
   const equipeErr = "equipe_err" in sp;
+  const adversaireErr = "adversaire_err" in sp;
   const isValide = club.statutVerification === "valide";
 
   const [equipes, annonces] = await Promise.all([
@@ -64,6 +65,12 @@ export default async function DashboardPage({
           <span className="font-display uppercase text-danger">Suppression impossible.</span>{" "}
           Cette équipe a encore des annonces ouvertes. Confirmez-les /
           annulez-les (ou supprimez-les) avant de retirer l&apos;équipe.
+        </div>
+      )}
+      {adversaireErr && (
+        <div className="card mt-6 border-danger/40 p-4 text-sm text-paper">
+          <span className="font-display uppercase text-danger">Confirmation impossible.</span>{" "}
+          Vous devez indiquer le nom de l&apos;adversaire pour confirmer le match.
         </div>
       )}
       {welcome && (
@@ -178,9 +185,16 @@ export default async function DashboardPage({
                 <div className="flex flex-wrap gap-2">
                   {a.statut === "ouvert" && (
                     <>
-                      <form action={setAnnonceStatutAction} className="inline">
+                      <form action={setAnnonceStatutAction} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="id" value={a.id} />
                         <input type="hidden" name="statut" value="confirme" />
+                        <input
+                          name="adversaireNom"
+                          type="text"
+                          className="input text-xs"
+                          placeholder="Nom de l'adversaire"
+                          required
+                        />
                         <button className="btn-ghost text-xs" type="submit">Confirmer le match</button>
                       </form>
                       <form action={setAnnonceStatutAction} className="inline">
