@@ -45,8 +45,11 @@ export function annonceLabel(args: {
   return `${cat} · ${formatDateFR(args.date)} · ${args.heure}`;
 }
 
-export function relTime(date: Date): string {
-  const diff = Date.now() - date.getTime();
+export function relTime(date: Date | string | number): string {
+  const d =
+    date instanceof Date ? date : new Date(typeof date === "number" ? date : date);
+  if (Number.isNaN(d.getTime())) return "date inconnue";
+  const diff = Date.now() - d.getTime();
   const mn = Math.round(diff / 60000);
   if (mn < 1) return "à l'instant";
   if (mn < 60) return `il y a ${mn} min`;
@@ -54,7 +57,7 @@ export function relTime(date: Date): string {
   if (h < 24) return `il y a ${h} h`;
   const j = Math.round(h / 24);
   if (j < 30) return `il y a ${j} j`;
-  return date.toLocaleDateString("fr-FR");
+  return d.toLocaleDateString("fr-FR");
 }
 
 export function domExtLabel(v: string): string {

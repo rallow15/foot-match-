@@ -54,7 +54,13 @@ async function rateLimitByKey(
     });
 
     // Fenêtre expirée -> on réarme à 1 (nouvelle fenêtre).
-    if (entry.resetAt.getTime() <= now) {
+    // Prisma renvoie normalement des Dates, mais après sérialisation (cache,
+    // edge runtime) on peut recevoir une chaîne ISO — normaliser.
+    const resetAtMs =
+      entry.resetAt instanceof Date
+        ? entry.resetAt.getTime()
+        : new Date(entry.resetAt).getTime();
+    if (resetAtMs <= now) {
       await prisma.rateLimit.update({
         where: { key },
         data: { count: 1, resetAt },
