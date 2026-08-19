@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { getCurrentClub } from "@/lib/auth";
 import { fetchAnnoncesLanding } from "@/lib/queries";
 
 export const metadata = {
@@ -8,7 +7,8 @@ export const metadata = {
     "La plateforme qui met en relation les clubs amateurs de football pour organiser des matchs amicaux. Proposez, cherchez, contactez.",
 };
 
-export const dynamic = "force-dynamic";
+// ISR : la landing est regénérée au maximum toutes les 60 s.
+export const revalidate = 60;
 
 const steps = [
   {
@@ -34,8 +34,6 @@ const steps = [
 ];
 
 export default async function Home() {
-  const club = await getCurrentClub();
-  const proposeHref = club ? "/dashboard/annonces/nouvelle" : "/inscription";
   const latest = await fetchAnnoncesLanding(3);
 
   return (
@@ -56,7 +54,7 @@ export default async function Home() {
             <Link href="/annonces" prefetch className="btn-accent">
               Rechercher un match
             </Link>
-            <Link href={proposeHref} prefetch className="btn-ghost">
+            <Link href="/dashboard/annonces/nouvelle" prefetch className="btn-ghost">
               Proposer un match
             </Link>
           </div>
@@ -145,7 +143,7 @@ export default async function Home() {
             <Link href="/annonces" prefetch className="btn-accent">
               Rechercher un match
             </Link>
-            <Link href={proposeHref} prefetch className="btn-ghost">
+            <Link href="/dashboard/annonces/nouvelle" prefetch className="btn-ghost">
               Proposer un match
             </Link>
           </div>

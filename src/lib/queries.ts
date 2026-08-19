@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "./db";
 import { haversineKm } from "./geo";
 import { todayISO } from "./utils";
@@ -43,7 +44,7 @@ export async function fetchAnnonceById(id: string) {
   });
 }
 
-export async function searchAnnonces(params: SearchParams) {
+async function _searchAnnoncesImpl(params: SearchParams) {
   const where: Record<string, unknown> = {
     statut: "ouvert",
     // auto-expiration : on ne montre que les dates à venir (cf. risque "annonces fantômes")
@@ -100,8 +101,13 @@ export async function searchAnnonces(params: SearchParams) {
   return filtered;
 }
 
+export const searchAnnonces = unstable_cache(_searchAnnoncesImpl, ["search-annonces"], {
+  revalidate: 60,
+  tags: ["annonces"],
+});
+
 // Quelques annonces récentes pour la landing page (teaser).
-export async function fetchAnnoncesLanding(limit = 3) {
+async function _fetchAnnoncesLandingImpl(limit = 3) {
   return prisma.annonce.findMany({
     where: { statut: "ouvert", date: { gte: todayISO() } },
     include: { equipe: true, club: { select: { id: true, nom: true, ville: true } } },
@@ -109,6 +115,46 @@ export async function fetchAnnoncesLanding(limit = 3) {
     take: limit,
   });
 }
+
+export const fetchAnnoncesLanding = unstable_cache(_fetchAnnoncesLandingImpl, ["annonces-landing"], {
+  revalidate: 60,
+  tags: ["annonces", "landing"],
+});
+
+// Matchs confirmés pour la page publique (avec filtres ligue/district).
+async function _fetchMatchsConfirmesImpl(ligue: string, district: string) {
+  const where: Record<string, unknown> = { statut: "confirme" };
+  if (ligue || district) {
+    const clubFilter: Record<string, unknown> = {};
+    if (ligue) clubFilter.ligue = ligue;
+    if (district) clubFilter.district = district;
+    where.club = clubFilter;
+  }
+
+  return prisma.annonce.findMany({
+    where,
+    include: {
+      equipe: true,
+      club: {
+        select: {
+          id: true,
+          nom: true,
+          ville: true,
+          district: true,
+          ligue: true,
+          logoUrl: true,
+        },
+      },
+    },
+    orderBy: { date: "desc" },
+    take: 100,
+  });
+}
+
+export const fetchMatchsConfirmes = unstable_cache(_fetchMatchsConfirmesImpl, ["matchs-confirmes"], {
+  revalidate: 60,
+  tags: ["matchs-confirmes", "annonces"],
+});
 
 export async function fetchMyAnnonces(clubId: string) {
   return prisma.annonce.findMany({
@@ -173,4 +219,3 @@ export async function fetchClubProfile(id: string) {
     },
   });
 }
-

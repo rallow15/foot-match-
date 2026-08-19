@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
@@ -506,6 +506,8 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
   await touchActivity(club.id);
   revalidatePath("/");
   revalidatePath("/dashboard");
+  updateTag("annonces");
+  updateTag("landing");
   redirect("/dashboard");
 }
 
@@ -561,6 +563,9 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
   if (count === 0) return { error: "Annonce introuvable." };
   revalidatePath("/");
   revalidatePath("/dashboard");
+  updateTag("annonces");
+  updateTag("landing");
+  updateTag("matchs-confirmes");
   redirect("/dashboard");
 }
 
@@ -590,6 +595,9 @@ export async function setAnnonceStatutAction(formData: FormData): Promise<void> 
   revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/matchs-confirmees");
+  updateTag("annonces");
+  updateTag("landing");
+  updateTag("matchs-confirmes");
   redirect("/dashboard");
 }
 
@@ -601,6 +609,9 @@ export async function deleteAnnonceAction(formData: FormData): Promise<void> {
   await prisma.annonce.deleteMany({ where: { id, clubId: club.id } });
   revalidatePath("/");
   revalidatePath("/dashboard");
+  updateTag("annonces");
+  updateTag("landing");
+  updateTag("matchs-confirmes");
   redirect("/dashboard");
 }
 

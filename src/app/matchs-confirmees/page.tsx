@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { fetchMatchsConfirmes } from "@/lib/queries";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
 import { formatDateLongFR } from "@/lib/utils";
@@ -10,7 +10,8 @@ export const metadata = {
     "Découvrez les matchs amicaux confirmés entre clubs amateurs de football.",
 };
 
-export const dynamic = "force-dynamic";
+// Les filtres rendent la page dynamique, mais la requête DB est cachée.
+export const revalidate = 60;
 
 export default async function MatchsConfirmesPage({
   searchParams,
@@ -27,32 +28,7 @@ export default async function MatchsConfirmesPage({
     ? requestedDistrict
     : "";
 
-  const where: Record<string, unknown> = { statut: "confirme" };
-  if (ligue || district) {
-    const clubFilter: Record<string, unknown> = {};
-    if (ligue) clubFilter.ligue = ligue;
-    if (district) clubFilter.district = district;
-    where.club = clubFilter;
-  }
-
-  const annonces = await prisma.annonce.findMany({
-    where,
-    include: {
-      equipe: true,
-      club: {
-        select: {
-          id: true,
-          nom: true,
-          ville: true,
-          district: true,
-          ligue: true,
-          logoUrl: true,
-        },
-      },
-    },
-    orderBy: { date: "desc" },
-    take: 100,
-  });
+  const annonces = await fetchMatchsConfirmes(ligue, district);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">

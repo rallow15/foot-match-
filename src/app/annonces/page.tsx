@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { searchAnnonces } from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
-import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
 import { SearchFilters } from "@/components/SearchFilters";
 
@@ -12,7 +11,9 @@ export const metadata = {
     "Trouvez une annonce de match amical entre clubs amateurs de football. Filtrez par catégorie, date, ligue, district et distance.",
 };
 
-export const dynamic = "force-dynamic";
+// La page reste dynamique à cause des searchParams, mais les requêtes DB
+// sont mises en cache par `searchAnnonces` (unstable_cache).
+export const revalidate = 60;
 
 export default async function AnnoncesSearchPage({
   searchParams,
@@ -38,8 +39,7 @@ export default async function AnnoncesSearchPage({
     rayon: get("rayon"),
   };
 
-  const [annonces, club] = await Promise.all([searchAnnonces(params), getCurrentClub()]);
-  const proposeHref = club ? "/dashboard/annonces/nouvelle" : "/inscription";
+  const annonces = await searchAnnonces(params);
 
   const lat = parseFloat(params.latitude ?? "");
   const lng = parseFloat(params.longitude ?? "");
@@ -50,7 +50,7 @@ export default async function AnnoncesSearchPage({
       <p className="eyebrow text-accent">Matchs amicaux · Football amateur</p>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="headline title-bar text-3xl text-paper">Rechercher un match</h1>
-        <Link href={proposeHref} prefetch className="btn-accent text-sm">
+        <Link href="/dashboard/annonces/nouvelle" prefetch className="btn-accent text-sm">
           Proposer un match
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default async function AnnoncesSearchPage({
           <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
           <p className="mt-2 text-muted">
             Élargissez la recherche ou{" "}
-            <Link href={proposeHref} className="text-accent hover:underline">
+            <Link href="/dashboard/annonces/nouvelle" className="text-accent hover:underline">
               proposez la vôtre
             </Link>{" "}
             — un club près de chez vous la verra peut-être.
