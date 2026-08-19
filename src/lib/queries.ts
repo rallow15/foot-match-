@@ -123,7 +123,11 @@ export const fetchAnnoncesLanding = unstable_cache(_fetchAnnoncesLandingImpl, ["
 
 // Matchs confirmés pour la page publique (avec filtres ligue/district).
 async function _fetchMatchsConfirmesImpl(ligue: string, district: string) {
-  const where: Record<string, unknown> = { statut: "confirme" };
+  const where: Record<string, unknown> = {
+    statut: "confirme",
+    // auto-expiration : un match confirmé passé ne reste pas affiché indéfiniment
+    date: { gte: todayISO() },
+  };
   if (ligue || district) {
     const clubFilter: Record<string, unknown> = {};
     if (ligue) clubFilter.ligue = ligue;

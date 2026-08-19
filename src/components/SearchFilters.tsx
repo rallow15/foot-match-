@@ -32,7 +32,7 @@ export function SearchFilters({ initial }: { initial: FilterInitial }) {
   const districts = ligue ? districtsForLigue(ligue) : [];
 
   return (
-    <form method="get" action="/" className="card mt-8 grid gap-5 p-5 md:grid-cols-2 lg:grid-cols-3">
+    <form method="get" action="/annonces" className="card mt-8 grid gap-5 p-5 md:grid-cols-2 lg:grid-cols-3">
       <div>
         <label className="label" htmlFor="categorie">Catégorie *</label>
         <select
@@ -154,7 +154,7 @@ export function SearchFilters({ initial }: { initial: FilterInitial }) {
       </div>
 
       <div className="lg:col-span-3 flex justify-end gap-3 border-t border-line pt-4">
-        <Link href="/" className="btn-ghost">Réinitialiser</Link>
+        <Link href="/annonces" className="btn-ghost">Réinitialiser</Link>
         <button type="submit" className="btn-accent">Rechercher</button>
       </div>
     </form>
