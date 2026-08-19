@@ -26,7 +26,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const start = Date.now();
   const club = await getCurrentClub();
+  const clubMs = Date.now() - start;
+  console.log(`[layout] getCurrentClub=${clubMs.toFixed(1)}ms`);
   const clubLite = club ? { id: club.id, nom: club.nom, role: club.role as "club" | "admin" } : null;
 
   return (
