@@ -82,12 +82,12 @@ model Annonce {
   arbitreDispo    Boolean  @default(false)
   niveauSouhaite  String?
   note            String?
+  // Nom du club adverse, renseigné par l'annonceur lors de la confirmation.
+  adversaireNom   String?
   // ouvert | confirme | annule
   statut          String   @default("ouvert")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  matchResult     MatchResult?
 
   @@index([equipeId])
   @@index([clubId])
@@ -95,19 +95,6 @@ model Annonce {
   @@index([date])
 }
 
-model MatchResult {
-  id              String   @id @default(cuid())
-  annonceId       String   @unique
-  annonce         Annonce  @relation(fields: [annonceId], references: [id], onDelete: Cascade)
-  adversaireNom   String?
-  scoreDomicile   Int?
-  scoreExterieur  Int?
-  commentaire     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([annonceId])
-}
 
 model Session {
   id        String   @id @default(cuid())

@@ -6,7 +6,6 @@ import { formatDateLongFR } from "@/lib/utils";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { StatutAnnonceBadge, StatutVerifBadge, NiveauBadge } from "@/components/Badges";
 import { EquipeForm } from "@/components/dashboard/EquipeForm";
-import { MatchResultForm } from "@/components/dashboard/MatchResultForm";
 import {
   deleteAnnonceAction,
   deleteEquipeAction,
@@ -205,45 +204,6 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {/* Résultats des matchs confirmés */}
-      <section className="mt-12">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="headline title-bar text-2xl text-paper">Résultats à renseigner</h2>
-        </div>
-        <p className="mt-2 text-sm text-muted">
-          Pour qu’un match apparaisse dans la page publique des matchs confirmés,
-          ajoutez l’adversaire et le score ci-dessous.
-        </p>
-
-        {passees.filter((a) => a.statut === "confirme").length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Aucun match confirmé à renseigner.</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {passees
-              .filter((a) => a.statut === "confirme")
-              .map((a) => {
-                const cat = getCategorie(a.equipe.categorie);
-                return (
-                  <div key={a.id} className="card grid gap-4 p-4 sm:grid-cols-[1fr_auto]">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="headline text-xl text-paper">{cat?.label}</span>
-                        {a.equipe.niveau && <NiveauBadge niveau={a.equipe.niveau} />}
-                        <StatutAnnonceBadge statut={a.statut} />
-                      </div>
-                      <p className="mt-1 text-sm text-muted">
-                        {formatDateLongFR(a.date)} · {a.heure} ·{" "}
-                        {DOM_EXT_LABEL[a.domicileExterieur as keyof typeof DOM_EXT_LABEL] ??
-                          a.domicileExterieur}
-                      </p>
-                    </div>
-                    <MatchResultForm annonceId={a.id} />
-                  </div>
-                );
-              })}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

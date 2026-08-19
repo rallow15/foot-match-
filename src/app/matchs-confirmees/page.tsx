@@ -49,7 +49,6 @@ export default async function MatchsConfirmesPage({
           logoUrl: true,
         },
       },
-      matchResult: true,
     },
     orderBy: { date: "desc" },
     take: 100,
@@ -62,8 +61,7 @@ export default async function MatchsConfirmesPage({
         Matchs confirmés
       </h1>
       <p className="mt-2 max-w-xl text-sm text-muted">
-        Les matchs amicaux organisés entre clubs via Matchs Amicaux. Scores et
-        commentaires renseignés par les clubs.
+        Les matchs amicaux organisés entre clubs via Matchs Amicaux.
       </p>
 
       <form
@@ -137,9 +135,6 @@ export default async function MatchsConfirmesPage({
           {annonces.map((a) => {
             const cat = getCategorie(a.equipe.categorie);
             const dom = a.domicileExterieur as keyof typeof DOM_EXT_LABEL;
-            const result = a.matchResult;
-            const hasScore =
-              result?.scoreDomicile != null && result?.scoreExterieur != null;
 
             return (
               <li key={a.id} className="card p-5">
@@ -159,13 +154,8 @@ export default async function MatchsConfirmesPage({
                   </div>
                   <div className="text-right">
                     <p className="headline text-xl text-accent">
-                      {hasScore
-                        ? `${result!.scoreDomicile} - ${result!.scoreExterieur}`
-                        : "VS"}
+                      {a.adversaireNom ? `VS ${a.adversaireNom}` : "VS"}
                     </p>
-                    {result?.adversaireNom && (
-                      <p className="text-sm text-muted">{result.adversaireNom}</p>
-                    )}
                   </div>
                 </div>
 
@@ -188,9 +178,9 @@ export default async function MatchsConfirmesPage({
                   )}
                 </div>
 
-                {result?.commentaire && (
+                {a.note && (
                   <p className="mt-3 text-sm italic leading-relaxed text-muted">
-                    « {result.commentaire} »
+                    « {a.note} »
                   </p>
                 )}
 
