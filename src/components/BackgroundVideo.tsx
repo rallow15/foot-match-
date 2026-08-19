@@ -10,9 +10,9 @@ export function BackgroundVideo() {
       aria-hidden
       style={{
         background:
-          "radial-gradient(1200px 600px at 80% -10%, rgba(46, 224, 106, 0.06), transparent 60%), " +
-          "radial-gradient(1000px 500px at 0% 0%, rgba(45, 125, 246, 0.07), transparent 55%), " +
-          "linear-gradient(180deg, #0a0f0c 0%, #0d1210 100%)",
+          "radial-gradient(1200px 600px at 80% -10%, rgba(46, 224, 106, 0.12), transparent 60%), " +
+          "radial-gradient(1000px 500px at 0% 0%, rgba(45, 125, 246, 0.14), transparent 55%), " +
+          "linear-gradient(180deg, #121a16 0%, #161f1b 100%)",
       }}
     />
   );
