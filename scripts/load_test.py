@@ -4,11 +4,12 @@ import random
 import statistics
 import time
 from dataclasses import dataclass
-from urllib.parse import urljoin
-
 import aiohttp
 
 BASE_URL = "https://foot-match-git-main-rallow15s-projects.vercel.app"
+# Token SSO temporaire pour les tests sur les déploisements protégés Vercel.
+# Laisser vide pour tester un site public non protégé.
+SHARE_TOKEN = ""
 ENDPOINTS = [
     "/",
     "/annonces",
@@ -17,6 +18,13 @@ ENDPOINTS = [
     "/comment-ca-marche",
     "/inscription",
 ]
+
+
+def make_url(endpoint: str) -> str:
+    if not SHARE_TOKEN:
+        return f"{BASE_URL}{endpoint}"
+    sep = "&" if "?" in endpoint else "?"
+    return f"{BASE_URL}{endpoint}{sep}_vercel_share={SHARE_TOKEN}"
 
 CONCURRENT_USERS = 50
 TOTAL_REQUESTS = 200  # réparties entre les endpoints
@@ -32,7 +40,7 @@ class Result:
 
 
 async def fetch(session: aiohttp.ClientSession, endpoint: str, sem: asyncio.Semaphore) -> Result:
-    url = urljoin(BASE_URL, endpoint)
+    url = make_url(endpoint)
     async with sem:
         start = time.perf_counter()
         try:
