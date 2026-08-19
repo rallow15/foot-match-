@@ -68,18 +68,12 @@ export async function createSession(clubId: string): Promise<string> {
 }
 
 export const getSession = cache(async () => {
-  const start = Date.now();
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) {
-    console.log(`[getSession] no-cookie ${Date.now() - start}ms`);
-    return null;
-  }
-  const dbStart = Date.now();
+  if (!token) return null;
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashOpaqueToken(token) },
   });
-  console.log(`[getSession] db=${Date.now() - dbStart}ms total=${Date.now() - start}ms`);
   if (!session) return null;
   if (session.expiresAt < new Date()) {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => {});

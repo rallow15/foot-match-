@@ -4,7 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackgroundVideo } from "@/components/BackgroundVideo";
-import { getCurrentClub } from "@/lib/auth";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -25,13 +24,11 @@ export const metadata: Metadata = {
     "La plateforme qui met en relation les clubs amateurs de football pour organiser des matchs amicaux. Proposez, cherchez, contactez.",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const start = Date.now();
-  const club = await getCurrentClub();
-  const clubMs = Date.now() - start;
-  console.log(`[layout] getCurrentClub=${clubMs.toFixed(1)}ms`);
-  const clubLite = club ? { id: club.id, nom: club.nom, role: club.role as "club" | "admin" } : null;
-
+// Layout statique : plus de getCurrentClub ici. Cela permet aux pages publiques
+// d'être servies depuis le cache CDN/ISR sans lookup session à chaque requête.
+// Le Header affiche l'état non-connecté par défaut ; les pages privées (dashboard,
+// admin) peuvent surcharger le header localement si besoin.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="fr"
@@ -39,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body className="min-h-full flex flex-col bg-ink text-paper">
         <BackgroundVideo />
-        <Header club={clubLite} />
+        <Header club={null} />
         <main className="relative z-10 flex-1">{children}</main>
         <Footer />
       </body>

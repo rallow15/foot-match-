@@ -45,7 +45,6 @@ export async function fetchAnnonceById(id: string) {
 }
 
 async function _searchAnnoncesImpl(params: SearchParams) {
-  const start = Date.now();
   const where: Record<string, unknown> = {
     statut: "ouvert",
     // auto-expiration : on ne montre que les dates à venir (cf. risque "annonces fantômes")
@@ -99,7 +98,6 @@ async function _searchAnnoncesImpl(params: SearchParams) {
 
   // Tri final par date la plus proche
   filtered.sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
-  console.log(`[searchAnnonces] ${filtered.length} results in ${Date.now() - start}ms`);
   return filtered;
 }
 
