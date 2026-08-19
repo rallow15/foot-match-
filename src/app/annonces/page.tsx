@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { searchAnnonces } from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
 import { getCurrentClub } from "@/lib/auth";
@@ -49,12 +50,14 @@ export default async function AnnoncesSearchPage({
       <p className="eyebrow text-accent">Matchs amicaux · Football amateur</p>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="headline title-bar text-3xl text-paper">Rechercher un match</h1>
-        <Link href={proposeHref} className="btn-accent text-sm">
+        <Link href={proposeHref} prefetch className="btn-accent text-sm">
           Proposer un match
         </Link>
       </div>
 
-      <SearchFilters initial={params} />
+      <Suspense fallback={<div className="mt-6 h-32 animate-pulse rounded bg-ink-3" />}>
+        <SearchFilters initial={params} />
+      </Suspense>
 
       {/* RÉSULTATS */}
       <div className="mt-10 flex items-baseline justify-between">

@@ -81,6 +81,7 @@ function MobileNavItem({
   return (
     <Link
       href={href}
+      prefetch
       onClick={onClick}
       className="rounded-sm px-3 py-3 text-sm font-medium text-muted transition-colors hover:bg-ink-3 hover:text-paper"
     >
@@ -141,6 +142,7 @@ export function Header({ club }: HeaderProps) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch
               className={`transition-colors hover:text-paper ${
                 pathname === link.href ? "text-paper" : ""
               }`}
@@ -151,6 +153,7 @@ export function Header({ club }: HeaderProps) {
           {club && club.role === "club" && (
             <Link
               href="/dashboard"
+              prefetch
               className={`transition-colors hover:text-paper ${
                 pathname?.startsWith("/dashboard") ? "text-paper" : ""
               }`}
@@ -161,6 +164,7 @@ export function Header({ club }: HeaderProps) {
           {isAdmin && (
             <Link
               href="/admin"
+              prefetch
               className={`transition-colors hover:text-accent ${
                 pathname?.startsWith("/admin") ? "text-accent" : ""
               }`}

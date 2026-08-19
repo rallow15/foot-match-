@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { randomBytes, createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
@@ -66,7 +67,7 @@ export async function createSession(clubId: string): Promise<string> {
   return token;
 }
 
-export async function getSession() {
+export const getSession = cache(async () => {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -79,7 +80,7 @@ export async function getSession() {
     return null;
   }
   return session;
-}
+});
 
 // Champs club exposés au code métier. EXCLUT explicitement passwordHash,
 // lockedUntil, failedLoginAttempts et autres champs sensibles.
@@ -102,7 +103,7 @@ const CLUB_PUBLIC_SELECT = {
   derniereActiviteAt: true,
 } as const;
 
-export async function getCurrentClub() {
+export const getCurrentClub = cache(async () => {
   const session = await getSession();
   if (!session) return null;
   const club = await prisma.club.findUnique({
@@ -110,7 +111,7 @@ export async function getCurrentClub() {
     select: CLUB_PUBLIC_SELECT,
   });
   return club ?? null;
-}
+});
 
 export async function logout(): Promise<void> {
   const store = await cookies();

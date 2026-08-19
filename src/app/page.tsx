@@ -53,10 +53,10 @@ export default async function Home() {
             rechercher et organiser des matchs amicaux en toute simplicité.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/annonces" className="btn-accent">
+            <Link href="/annonces" prefetch className="btn-accent">
               Rechercher un match
             </Link>
-            <Link href={proposeHref} className="btn-ghost">
+            <Link href={proposeHref} prefetch className="btn-ghost">
               Proposer un match
             </Link>
           </div>
@@ -105,7 +105,7 @@ export default async function Home() {
                 Les clubs cherchent un adversaire
               </h2>
             </div>
-            <Link href="/annonces" className="btn-ghost text-sm">
+            <Link href="/annonces" prefetch className="btn-ghost text-sm">
               Voir toutes les annonces →
             </Link>
           </div>
@@ -142,10 +142,10 @@ export default async function Home() {
             organiser leurs matchs amicaux sans friction.
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-3">
-            <Link href="/annonces" className="btn-accent">
+            <Link href="/annonces" prefetch className="btn-accent">
               Rechercher un match
             </Link>
-            <Link href={proposeHref} className="btn-ghost">
+            <Link href={proposeHref} prefetch className="btn-ghost">
               Proposer un match
             </Link>
           </div>

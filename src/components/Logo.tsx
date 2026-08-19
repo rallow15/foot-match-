@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link href="/" className={`group inline-flex items-center ${className}`}>
+    <Link href="/" prefetch className={`group inline-flex items-center ${className}`}>
       <Image
         src="/logo.png"
         alt="Matchs Amicaux"
@@ -11,6 +11,7 @@ export function Logo({ className = "" }: { className?: string }) {
         height={48}
         className="h-12 w-auto object-contain"
         priority
+        sizes="160px"
       />
     </Link>
   );

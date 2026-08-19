@@ -27,6 +27,7 @@ export function ClubAvatar({ club, size = 40, className = "" }: ClubAvatarProps)
         height={size}
         className={`shrink-0 rounded-full border border-line object-cover ${className}`}
         unoptimized
+        sizes={`${size}px`}
       />
     );
   }
