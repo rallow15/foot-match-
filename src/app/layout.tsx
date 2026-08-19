@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
+import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackgroundVideo } from "@/components/BackgroundVideo";
+import { getCurrentClub } from "@/lib/auth";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -23,11 +25,23 @@ export const metadata: Metadata = {
     "La plateforme qui met en relation les clubs amateurs de football pour organiser des matchs amicaux. Proposez, cherchez, contactez.",
 };
 
-// Layout racine : structure commune (fonts, fond, footer). Le Header est fourni
-// par les layouts des groupes de routes : (public) pour le header anonyme,
-// (private) pour le header connecté. Ainsi les pages publiques restent statiques
-// et cacheables par le CDN/ISR.
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Layout racine dynamique : le header reflète l'état de connexion sur toutes les
+// pages. Les pages publiques perdent le cache CDN/ISR statique, mais l'expérience
+// utilisateur est cohérente (pas de header "déconnecté" sur les pages publiques).
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const club = await getCurrentClub();
+  const headerClub = club
+    ? {
+        id: club.id,
+        nom: club.nom,
+        role: club.role as "club" | "admin",
+      }
+    : null;
+
   return (
     <html
       lang="fr"
@@ -35,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full flex flex-col bg-ink text-paper">
         <BackgroundVideo />
+        <Header club={headerClub} />
         <main className="relative z-10 flex-1">{children}</main>
         <Footer />
       </body>
