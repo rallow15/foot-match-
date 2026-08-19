@@ -4,7 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackgroundVideo } from "@/components/BackgroundVideo";
-import { PageTransition } from "@/components/PageTransition";
 import { getCurrentClub } from "@/lib/auth";
 
 const inter = Inter({
@@ -38,9 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full flex flex-col bg-ink text-paper">
         <BackgroundVideo />
         <Header club={clubLite} />
-        <main className="relative z-10 flex-1">
-          <PageTransition>{children}</PageTransition>
-        </main>
+        <main className="relative z-10 flex-1">{children}</main>
         <Footer />
       </body>
     </html>
