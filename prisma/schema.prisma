@@ -43,9 +43,6 @@ model Club {
   equipes              Equipe[]
   sessions             Session[]
   annonces             Annonce[]   @relation("AnnoncePar")
-  contactsEmis         ContactLog[] @relation("Demandeur")
-  contactsRecus        ContactLog[] @relation("Destinataire")
-  messages             Message[]    @relation("AuteurMessage")
   passwordResetTokens  PasswordResetToken[]
 
   @@index([statutVerification])
@@ -90,7 +87,6 @@ model Annonce {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  contacts        ContactLog[]
   matchResult     MatchResult?
 
   @@index([equipeId])
@@ -126,47 +122,6 @@ model Session {
   @@index([clubId])
 }
 
-model ContactLog {
-  id              String     @id @default(cuid())
-  annonceId       String
-  annonce         Annonce    @relation(fields: [annonceId], references: [id], onDelete: Cascade)
-  demandeurClubId String
-  demandeur       Club       @relation("Demandeur", fields: [demandeurClubId], references: [id], onDelete: Cascade)
-  destinataireId  String
-  destinataire    Club       @relation("Destinataire", fields: [destinataireId], references: [id], onDelete: Cascade)
-  // Message initial de la mise en relation (conservé pour compatibilité ; les
-  // réponses sont stockées dans Message).
-  message         String?
-  // Dernier message lu par le demandeur / destinataire (pour les badges non-lus).
-  demandeurReadAt DateTime?
-  destinataireReadAt DateTime?
-  // contact shown to demandeur after request
-  createdAt       DateTime   @default(now())
-
-  messages        Message[]
-
-  @@index([annonceId])
-  @@index([demandeurClubId])
-  @@index([destinataireId])
-  // Idempotence de la mise en relation : un même demandeur ne contacte une
-  // annonce qu'une fois. Atomicité au niveau base (anti race + anti
-  // email-bombing : pas de renvoi de notification sur re-demande).
-  @@unique([demandeurClubId, annonceId])
-}
-
-model Message {
-  id            String     @id @default(cuid())
-  contactLogId  String
-  contactLog    ContactLog @relation(fields: [contactLogId], references: [id], onDelete: Cascade)
-  auteurClubId  String
-  auteur        Club       @relation("AuteurMessage", fields: [auteurClubId], references: [id], onDelete: Cascade)
-  contenu       String
-  createdAt     DateTime   @default(now())
-
-  @@index([contactLogId])
-  @@index([auteurClubId])
-  @@index([createdAt])
-}
 
 model PasswordResetToken {
   id        String   @id @default(cuid())

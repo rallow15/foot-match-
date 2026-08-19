@@ -52,9 +52,6 @@ export default async function DashboardPage({
         <div className="flex flex-col items-end gap-2">
           <StatutVerifBadge statut={club.statutVerification} />
           <div className="flex gap-3 text-xs">
-            <Link href="/dashboard/messages" className="text-muted hover:text-accent">
-              Messages →
-            </Link>
             <Link href="/dashboard/profil" className="text-muted hover:text-accent">
               Profil & logo →
             </Link>

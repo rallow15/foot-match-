@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackgroundVideo } from "@/components/BackgroundVideo";
 import { getCurrentClub } from "@/lib/auth";
-import { countUnreadConversations } from "@/lib/queries";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -29,7 +28,6 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const club = await getCurrentClub();
   const clubLite = club ? { id: club.id, nom: club.nom, role: club.role as "club" | "admin" } : null;
-  const unreadCount = clubLite ? await countUnreadConversations(clubLite.id) : 0;
 
   return (
     <html
@@ -38,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body className="min-h-full flex flex-col bg-ink text-paper">
         <BackgroundVideo />
-        <Header club={clubLite} unreadCount={unreadCount} />
+        <Header club={clubLite} />
         <main className="relative z-10 flex-1">{children}</main>
         <Footer />
       </body>

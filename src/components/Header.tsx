@@ -24,18 +24,15 @@ interface HeaderProps {
     nom: string;
     role: "club" | "admin";
   } | null;
-  unreadCount?: number;
 }
 
 function MobileMenu({
   isOpen,
   club,
-  unreadCount,
   onClose,
 }: {
   isOpen: boolean;
   club?: HeaderProps["club"];
-  unreadCount?: number;
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -51,11 +48,6 @@ function MobileMenu({
         {club?.role === "club" && (
           <MobileNavItem href="/dashboard" onClick={onClose}>
             Mon espace
-          </MobileNavItem>
-        )}
-        {club?.role === "club" && (
-          <MobileNavItem href="/dashboard/messages" onClick={onClose}>
-            Messages{unreadCount ? ` (${unreadCount})` : ""}
           </MobileNavItem>
         )}
         {club?.role === "admin" && (
@@ -134,7 +126,7 @@ function HamburgerButton({
   );
 }
 
-export function Header({ club, unreadCount = 0 }: HeaderProps) {
+export function Header({ club }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
@@ -164,21 +156,6 @@ export function Header({ club, unreadCount = 0 }: HeaderProps) {
               }`}
             >
               Mon espace
-            </Link>
-          )}
-          {club && club.role === "club" && (
-            <Link
-              href="/dashboard/messages"
-              className={`relative transition-colors hover:text-paper ${
-                pathname?.startsWith("/dashboard/messages") ? "text-paper" : ""
-              }`}
-            >
-              Messages
-              {unreadCount > 0 && (
-                <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-ink">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </Link>
           )}
           {isAdmin && (
@@ -224,7 +201,7 @@ export function Header({ club, unreadCount = 0 }: HeaderProps) {
       </div>
 
       <div id="mobile-menu">
-        <MobileMenu isOpen={menuOpen} club={club} unreadCount={unreadCount} onClose={() => setMenuOpen(false)} />
+        <MobileMenu isOpen={menuOpen} club={club} onClose={() => setMenuOpen(false)} />
       </div>
     </header>
   );

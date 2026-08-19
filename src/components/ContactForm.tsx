@@ -11,7 +11,7 @@ export function ContactForm({ annonceId }: Props) {
   const [state, formAction, pending] = useActionState(contacterAction, undefined as ActionState);
 
   if (state?.ok) {
-    // Coordonnées du club annonceur révélées après mise en relation (cf. PRD 5.4).
+    // Coordonnées du club annonceur révélées après demande (cf. PRD 5.4).
     // Elles proviennent du ActionState (serveur), pas de props — on évite ainsi
     // la fuite des coordonnées dans la payload RSC avant toute demande.
     const tel = state.tel ?? "";
@@ -21,8 +21,8 @@ export function ContactForm({ annonceId }: Props) {
       <div className="card border-accent/40 p-6">
         <p className="headline text-2xl text-accent">Demande envoyée ✓</p>
         <p className="mt-2 text-sm text-muted">
-          Le club a été notifié avec vos coordonnées. Vous pouvez aussi le recontacter
-          directement :
+          Le club a été notifié par email avec vos coordonnées. Vous pouvez le
+          recontacter directement :
         </p>
         <div className="mt-4 space-y-2">
           {tel && (

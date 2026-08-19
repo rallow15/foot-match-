@@ -19,7 +19,7 @@ import {
 import { geocode } from "@/lib/geo";
 import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, MESSAGE_RATE_LIMIT, MESSAGE_ACCOUNT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -680,136 +680,23 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
   if (annonce.date < todayISO()) return { error: "Cette annonce est expirée." };
   if (annonce.clubId === club.id) return { error: "Vous ne pouvez pas contacter votre propre annonce." };
 
-  // Idempotence : un même demandeur ne peut contacter une annonce qu'une seule
-  // fois. La contrainte @@unique([demandeurClubId, annonceId]) garantit
-  // l'atomicité (anti race) ; en cas de re-demande on ne renvoie PAS de mail
-  // (anti email-bombing du club annonceur) et on renvoie quand même les
-  // coordonnées déjà partagées.
-  let created = false;
-  try {
-    await prisma.contactLog.create({
-      data: {
-        annonceId: annonce.id,
-        demandeurClubId: club.id,
-        destinataireId: annonce.clubId,
-        message: message || null,
-        messages: message
-          ? {
-              create: {
-                auteurClubId: club.id,
-                contenu: message,
-              },
-            }
-          : undefined,
-      },
-    });
-    created = true;
-  } catch (e) {
-    if ((e as { code?: string }).code !== "P2002") throw e;
-  }
-
-  if (created) {
-    await touchActivity(club.id);
-    // L'email est await (pour laisser le temps à l'envoi sur Vercel avant la
-    // fin de la fonction) mais son échec ne remonte pas à l'utilisateur : la
-    // mise en relation est déjà enregistrée en base, on ne doit pas la faire
-    // échouer pour une panne SMTP.
-    await sendContactNotification({
-      to: annonce.club.email,
-      annonceLabel: `${annonce.equipe.categorie} · ${annonce.date} · ${annonce.heure}`,
-      demandeurClub: club.nom,
-      demandeurEmail: club.email,
-      demandeurTelephone: club.telephone,
-      message: message || undefined,
-    }).catch(() => {});
-  }
-
-  revalidatePath(`/annonces/${annonce.id}`);
-  revalidatePath("/dashboard/messages");
-  // Coordonnées du club annonceur révélées au demandeur uniquement après une
-  // mise en relation effective (cf. PRD). Elles proviennent du serveur, jamais
-  // du client — évite la fuite via les props du composant avant contact.
-  return { ok: true, tel: annonce.club.telephone, email: annonce.club.email };
-}
-
-/* ---------------- Chat / Messages ---------------- */
-
-export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const club = await getCurrentClub();
-  if (!club || club.role !== "club") return { error: "Non autorisé." };
-  if (club.statutVerification !== "valide")
-    return { error: "Votre compte doit être validé pour envoyer un message." };
-
-  // Rate limiting par IP ET par compte (anti spam de messages + email-bombing).
-  const ip = await getClientIp();
-  const [ipOk, accountOk] = await Promise.all([
-    rateLimit(ip, "message", MESSAGE_RATE_LIMIT),
-    rateLimitByAccount(club.id, "message", MESSAGE_ACCOUNT_RATE_LIMIT),
-  ]);
-  if (!ipOk || !accountOk) {
-    return { error: "Trop de messages. Réessayez dans un instant." };
-  }
-
-  const contactLogId = String(formData.get("contactLogId") ?? "");
-  const contenu = String(formData.get("contenu") ?? "").trim();
-
-  if (!contactLogId) return { error: "Conversation invalide." };
-  if (!contenu) return { error: "Le message ne peut pas être vide." };
-  const lengthCheck = validateLength(contenu, "Message", LIMITS.MESSAGE_MAX);
-  if (!lengthCheck.valid) return { error: lengthCheck.error! };
-
-  const conversation = await prisma.contactLog.findFirst({
-    where: {
-      id: contactLogId,
-      OR: [{ demandeurClubId: club.id }, { destinataireId: club.id }],
-    },
-    include: {
-      annonce: {
-        include: { equipe: true, club: { select: { email: true, nom: true } } },
-      },
-      demandeur: { select: { id: true, nom: true, logoUrl: true, email: true } },
-      destinataire: { select: { id: true, nom: true, logoUrl: true, email: true } },
-    },
-  });
-  if (!conversation) return { error: "Conversation introuvable." };
-
-  // Une fois le contact établi, on autorise la messagerie tant que l'annonce
-  // associée reste ouverte et à venir. Cela évite le harcèlement sur des
-  // annonces périmées ou clôturées.
-  if (conversation.annonce.statut !== "ouvert" || conversation.annonce.date < todayISO()) {
-    return { error: "Cette annonce est clôturée ou expirée : la messagerie est désactivée." };
-  }
-
-  await prisma.message.create({
-    data: {
-      contactLogId,
-      auteurClubId: club.id,
-      contenu,
-    },
-  });
-
-  // Marque comme lu par l'auteur (logique : il vient d'écrire).
-  const isDemandeur = conversation.demandeurClubId === club.id;
-  await prisma.contactLog.update({
-    where: { id: contactLogId },
-    data: isDemandeur ? { demandeurReadAt: new Date() } : { destinataireReadAt: new Date() },
-  });
-
-  // Email de notification au destinataire (fire-and-forget).
-  const destinataire = isDemandeur ? conversation.destinataire : conversation.demandeur;
+  await touchActivity(club.id);
+  // L'email est await (pour laisser le temps à l'envoi sur Vercel avant la
+  // fin de la fonction) mais son échec ne remonte pas à l'utilisateur.
   await sendContactNotification({
-    to: destinataire.email,
-    annonceLabel: `${conversation.annonce.equipe.categorie} · ${conversation.annonce.date} · ${conversation.annonce.heure}`,
+    to: annonce.club.email,
+    annonceLabel: `${annonce.equipe.categorie} · ${annonce.date} · ${annonce.heure}`,
     demandeurClub: club.nom,
     demandeurEmail: club.email,
     demandeurTelephone: club.telephone,
-    message: contenu,
+    message: message || undefined,
   }).catch(() => {});
 
-  await touchActivity(club.id);
-  revalidatePath(`/dashboard/messages/${contactLogId}`);
-  revalidatePath("/dashboard/messages");
-  return { ok: true };
+  revalidatePath(`/annonces/${annonce.id}`);
+  // Coordonnées du club annonceur révélées au demandeur uniquement après une
+  // demande effective (cf. PRD). Elles proviennent du serveur, jamais du client
+  // — évite la fuite via les props du composant avant contact.
+  return { ok: true, tel: annonce.club.telephone, email: annonce.club.email };
 }
 
 /* ---------------- Admin (vérification licences) ---------------- */

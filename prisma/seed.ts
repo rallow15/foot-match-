@@ -43,7 +43,6 @@ async function main() {
   }
 
   console.log("→ Nettoyage…");
-  await prisma.contactLog.deleteMany();
   await prisma.session.deleteMany();
   await prisma.annonce.deleteMany();
   await prisma.equipe.deleteMany();
