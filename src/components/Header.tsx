@@ -134,7 +134,7 @@ export function Header({ club }: HeaderProps) {
   const isAdmin = club?.role === "admin";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-ink-3/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
 
