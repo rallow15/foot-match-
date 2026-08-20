@@ -22,6 +22,23 @@ export const metadata: Metadata = {
   title: "Matchs Amicaux — Trouvez un club pour un match amical",
   description:
     "La plateforme qui met en relation les clubs amateurs de football pour organiser des matchs amicaux. Proposez, cherchez, contactez.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Matchs Amicaux",
+    startupImage: {
+      url: "/icon-512x512.png",
+    },
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 // Layout racine dynamique : le header reflète l'état de connexion sur toutes les

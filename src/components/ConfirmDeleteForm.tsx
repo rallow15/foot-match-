@@ -55,7 +55,7 @@ export function ConfirmDeleteForm({
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.currentTarget === e.target) setOpen(false);
           }}
