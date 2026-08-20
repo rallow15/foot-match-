@@ -50,7 +50,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-ink text-paper">
         <BackgroundVideo />
         <Header club={headerClub} />
-        <main className="relative z-10 flex-1">{children}</main>
+        <main className="relative z-10 flex-1 fade-in">{children}</main>
         <Footer />
       </body>
     </html>

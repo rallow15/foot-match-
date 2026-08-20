@@ -168,7 +168,7 @@ export default async function DashboardPage({
           <p className="mt-4 text-sm text-muted">Aucune annonce pour le moment.</p>
         )}
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3 stagger-children">
           {[...ouvertes, ...passees].map((a) => {
             const cat = getCategorie(a.equipe.categorie);
             const isEditable = a.date >= todayISO();
@@ -202,28 +202,43 @@ export default async function DashboardPage({
                           placeholder="Nom de l'adversaire"
                           required
                         />
-                        <button className="btn-ghost text-xs" type="submit">Confirmer le match</button>
+                        <button className="btn-xs-accent" type="submit">Confirmer le match</button>
                       </form>
                       <form action={setAnnonceStatutAction} className="inline">
                         <input type="hidden" name="id" value={a.id} />
                         <input type="hidden" name="statut" value="annule" />
-                        <button className="btn-ghost text-xs" type="submit">Annuler</button>
+                        <button className="btn-xs-ghost" type="submit">Annuler</button>
                       </form>
+                      {isEditable && (
+                        <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-xs-ghost">
+                          Modifier
+                        </Link>
+                      )}
+                      <ConfirmDeleteForm
+                        action={deleteAnnonceAction}
+                        hiddenName="id"
+                        hiddenValue={a.id}
+                        buttonClassName="btn-xs-danger"
+                        title="Supprimer l’annonce"
+                        message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
+                      />
                     </>
                   )}
-                  {isEditable && (
-                    <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-ghost text-xs">
+                  {a.statut !== "ouvert" && isEditable && (
+                    <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-xs-ghost">
                       Modifier
                     </Link>
                   )}
-                  <ConfirmDeleteForm
-                    action={deleteAnnonceAction}
-                    hiddenName="id"
-                    hiddenValue={a.id}
-                    buttonClassName="btn-danger text-xs"
-                    title="Supprimer l’annonce"
-                    message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
-                  />
+                  {a.statut !== "ouvert" && (
+                    <ConfirmDeleteForm
+                      action={deleteAnnonceAction}
+                      hiddenName="id"
+                      hiddenValue={a.id}
+                      buttonClassName="btn-xs-danger"
+                      title="Supprimer l’annonce"
+                      message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
+                    />
+                  )}
                 </div>
               </div>
             );

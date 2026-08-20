@@ -108,7 +108,7 @@ export default async function MatchsConfirmesPage({
           </Link>
         </div>
       ) : (
-        <ul className="mt-8 space-y-5">
+        <ul className="mt-8 space-y-5 stagger-children">
           {annonces.map((a) => {
             const cat = getCategorie(a.equipe.categorie);
             const dom = a.domicileExterieur as keyof typeof DOM_EXT_LABEL;
@@ -135,16 +135,20 @@ export default async function MatchsConfirmesPage({
                   <p className="headline text-2xl text-paper sm:text-3xl">{a.adversaireNom ?? "Adversaire"}</p>
                 </div>
 
-                <div className="mt-6 grid gap-2 text-sm text-muted sm:grid-cols-2">
-                  <p>📅 {formatDateLongFR(a.date)} · {a.heure}</p>
-                  <p>
-                    🏟️{" "}
-                    {a.stadeDispo && a.stadeNom
-                      ? `Stade ${a.stadeNom} · ${a.stadeVille ?? a.club.ville}`
-                      : "Stade non renseigné"}
-                  </p>
-                  <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}</p>
-                  <p>📌 {a.club.ligue}{a.club.district ? ` · ${a.club.district}` : ""}</p>
+                <div className="mt-6 flex flex-wrap items-end justify-between gap-4 text-sm text-muted">
+                  <div className="space-y-1">
+                    <p>📅 {formatDateLongFR(a.date)} · {a.heure}</p>
+                    <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}</p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <p>
+                      🏟️{" "}
+                      {a.stadeDispo && a.stadeNom
+                        ? `Stade ${a.stadeNom} · ${a.stadeVille ?? a.club.ville}`
+                        : "Stade non renseigné"}
+                    </p>
+                    <p>📌 {a.club.ligue}{a.club.district ? ` · ${a.club.district}` : ""}</p>
+                  </div>
                 </div>
 
                 {a.note && (

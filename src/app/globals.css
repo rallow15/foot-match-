@@ -91,7 +91,7 @@ body {
   .btn-ghost,
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 font-display uppercase tracking-wide font-semibold
-           transition-all duration-200 select-none cursor-pointer
+           transition-all duration-300 ease-out select-none cursor-pointer
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-accent {
@@ -107,18 +107,48 @@ body {
            hover:border-danger hover:text-danger;
   }
 
+  /* Petits boutons d'action du dashboard (Confirmer / Annuler / Modifier / Supprimer) */
+  .btn-xs-accent {
+    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1.5
+           transition-all duration-300 ease-out select-none cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed
+           bg-accent text-[#04210f] rounded-sm
+           hover:bg-accent-strong hover:shadow-[0_0_16px_-4px_var(--accent)] active:scale-[0.98];
+  }
+  .btn-xs-ghost {
+    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1.5
+           transition-all duration-300 ease-out select-none cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-paper border border-line rounded-sm
+           hover:bg-ink-4 hover:border-muted-2;
+  }
+  .btn-xs-danger {
+    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1.5
+           transition-all duration-300 ease-out select-none cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-paper border border-line rounded-sm
+           hover:border-danger hover:text-danger;
+  }
+
   .card {
-    @apply bg-ink-2 border border-line rounded-md overflow-hidden;
+    @apply bg-ink-2 border border-line rounded-md overflow-hidden
+           transition-all duration-300 ease-out;
   }
   .card-hover {
-    @apply transition-all duration-200 hover:border-muted-2 hover:-translate-y-0.5
-           hover:shadow-[0_10px_40px_-12px_rgba(0,0,0,0.7)];
+    @apply transition-all duration-300 ease-out
+           hover:border-muted-2 hover:-translate-y-1
+           hover:shadow-[0_20px_60px_-16px_rgba(0,0,0,0.55)]
+           hover:scale-[1.01];
   }
 
   .input {
     @apply w-full bg-ink-3 border border-line rounded-sm px-3.5 py-2.5 text-paper
            placeholder:text-muted-2 outline-none
-           focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
+           focus:border-accent focus:ring-1 focus:ring-accent
+           transition-all duration-300 ease-out;
   }
   .label {
     @apply block text-xs font-display uppercase tracking-wider text-muted mb-1.5;
@@ -149,6 +179,32 @@ body {
 .reveal {
   animation: rise 0.5s ease-out both;
 }
+
+/* Fade-in doux au chargement des pages */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+/* Apparition en cascade des éléments de liste */
+.stagger-children > * {
+  opacity: 0;
+  animation: rise 0.4s ease-out forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 480ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
+.stagger-children > *:nth-child(n+11) { animation-delay: 600ms; }
 
 /* Ligne d'accent sous les titres de section */
 .title-bar::after {
