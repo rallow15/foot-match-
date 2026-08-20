@@ -60,7 +60,7 @@ export default async function AnnoncesSearchPage({
       </Suspense>
 
       {/* RÉSULTATS */}
-      <div className="mt-10 flex items-baseline justify-between">
+      <div id="annonces-results" className="mt-10 flex items-baseline justify-between">
         <p className="text-sm text-muted">
           <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
           {annonces.length > 1 ? "annonces ouvertes" : "annonce ouverte"}

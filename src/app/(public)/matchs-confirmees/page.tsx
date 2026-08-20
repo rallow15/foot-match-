@@ -3,6 +3,7 @@ import { fetchMatchsConfirmes } from "@/lib/queries";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
 import { formatDateLongFR } from "@/lib/utils";
+import { StatutAnnonceBadge } from "@/components/Badges";
 
 export const metadata = {
   title: "Matchs confirmés — Matchs Amicaux",
@@ -107,67 +108,50 @@ export default async function MatchsConfirmesPage({
           </Link>
         </div>
       ) : (
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-8 space-y-5">
           {annonces.map((a) => {
             const cat = getCategorie(a.equipe.categorie);
             const dom = a.domicileExterieur as keyof typeof DOM_EXT_LABEL;
 
             return (
-              <li key={a.id} className="card p-5">
+              <li key={a.id} className="card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="eyebrow">
                       {cat?.groupe === "jeunes" ? "Jeunes" : "Adultes / Loisirs"}
                     </p>
-                    <h2 className="headline mt-1 text-2xl text-paper">
-                      {cat?.label}
-                    </h2>
+                    <h2 className="headline mt-1 text-2xl text-paper">{cat?.label}</h2>
                     {a.equipe.niveau && (
-                      <p className="mt-1 text-sm text-muted-2">
-                        {a.equipe.niveau}
-                      </p>
+                      <p className="mt-1 text-sm text-muted-2">{a.equipe.niveau}</p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="headline text-xl text-accent">
-                      {a.adversaireNom ? `VS ${a.adversaireNom}` : "VS"}
-                    </p>
-                  </div>
+                  <StatutAnnonceBadge statut="confirme" />
                 </div>
 
-                <div className="mt-4 grid gap-1 text-sm text-muted">
+                <div className="mt-6 flex flex-col items-center justify-center text-center">
+                  <p className="text-xs font-display uppercase tracking-wider text-muted">Match</p>
+                  <p className="headline mt-2 text-2xl text-paper sm:text-3xl">{a.club.nom}</p>
+                  <p className="headline my-1 text-xl text-accent sm:text-2xl">VS</p>
+                  <p className="headline text-2xl text-paper sm:text-3xl">{a.adversaireNom ?? "Adversaire"}</p>
+                </div>
+
+                <div className="mt-6 grid gap-2 text-sm text-muted sm:grid-cols-2">
+                  <p>📅 {formatDateLongFR(a.date)} · {a.heure}</p>
                   <p>
-                    📅 {formatDateLongFR(a.date)} · {a.heure}
+                    🏟️{" "}
+                    {a.stadeDispo && a.stadeNom
+                      ? `Stade ${a.stadeNom} · ${a.stadeVille ?? a.club.ville}`
+                      : "Stade non renseigné"}
                   </p>
-                  <p>
-                    📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}
-                  </p>
-                  <p>
-                    🏟️ {a.club.nom}
-                    {a.stadeDispo && a.stadeNom ? ` · ${a.stadeNom}` : ""}
-                  </p>
-                  {(a.club.ligue || a.club.district) && (
-                    <p>
-                      📌 {a.club.ligue}
-                      {a.club.district ? ` · ${a.club.district}` : ""}
-                    </p>
-                  )}
+                  <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}</p>
+                  <p>📌 {a.club.ligue}{a.club.district ? ` · ${a.club.district}` : ""}</p>
                 </div>
 
                 {a.note && (
-                  <p className="mt-3 text-sm italic leading-relaxed text-muted">
+                  <p className="mt-4 text-sm italic leading-relaxed text-muted">
                     « {a.note} »
                   </p>
                 )}
-
-                <div className="mt-4 border-t border-line pt-4">
-                  <Link
-                    href={`/annonces/${a.id}`}
-                    className="text-sm text-accent hover:underline"
-                  >
-                    Voir l’annonce →
-                  </Link>
-                </div>
               </li>
             );
           })}

@@ -520,6 +520,7 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
 
   const annonce = await prisma.annonce.findFirst({ where: { id, clubId: club.id } });
   if (!annonce) return { error: "Annonce introuvable." };
+  if (annonce.date < todayISO()) return { error: "Cette annonce est passée et ne peut plus être modifiée." };
 
   const date = String(formData.get("date") ?? "");
   const heure = normalizeHeure(String(formData.get("heure") ?? ""));
