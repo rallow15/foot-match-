@@ -3,6 +3,7 @@ import { getCurrentClub } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { fetchMyEquipes } from "@/lib/queries";
 import { AnnonceForm } from "@/components/dashboard/AnnonceForm";
+import { todayISO } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export default async function ModifierAnnoncePage({
 
   const annonce = await prisma.annonce.findFirst({ where: { id, clubId: club.id } });
   if (!annonce) notFound();
+
+  // Une annonce passée ne peut plus être modifiée.
+  if (annonce.date < todayISO()) redirect("/dashboard");
 
   const equipes = await fetchMyEquipes(club.id);
 

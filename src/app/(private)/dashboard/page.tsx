@@ -2,10 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentClub } from "@/lib/auth";
 import { fetchMyAnnonces, fetchMyEquipes } from "@/lib/queries";
-import { formatDateLongFR } from "@/lib/utils";
+import { formatDateLongFR, todayISO } from "@/lib/utils";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { StatutAnnonceBadge, StatutVerifBadge, NiveauBadge } from "@/components/Badges";
 import { EquipeForm } from "@/components/dashboard/EquipeForm";
+import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
 import {
   deleteAnnonceAction,
   deleteEquipeAction,
@@ -127,12 +128,14 @@ export default async function DashboardPage({
                   <p className="headline text-lg text-paper">{getCategorie(e.categorie)?.label ?? e.categorie}</p>
                   <div className="mt-1.5">{e.niveau ? <NiveauBadge niveau={e.niveau} /> : <span className="text-xs text-muted-2">Niveau non précisé</span>}</div>
                 </div>
-                <form action={deleteEquipeAction} className="inline">
-                  <input type="hidden" name="id" value={e.id} />
-                  <button className="btn-danger text-xs" type="submit" title="Supprimer l'équipe">
-                    Supprimer
-                  </button>
-                </form>
+                <ConfirmDeleteForm
+                  action={deleteEquipeAction}
+                  hiddenName="id"
+                  hiddenValue={e.id}
+                  buttonClassName="btn-danger text-xs"
+                  title="Supprimer l’équipe"
+                  message={`Voulez-vous vraiment supprimer l’équipe « ${getCategorie(e.categorie)?.label ?? e.categorie} » ? Cette action est irréversible.`}
+                />
               </li>
             ))}
           </ul>
@@ -168,6 +171,7 @@ export default async function DashboardPage({
         <div className="mt-4 space-y-3">
           {[...ouvertes, ...passees].map((a) => {
             const cat = getCategorie(a.equipe.categorie);
+            const isEditable = a.date >= todayISO();
             return (
               <div key={a.id} className="card flex flex-wrap items-center justify-between gap-4 p-4">
                 <div className="min-w-0">
@@ -180,6 +184,9 @@ export default async function DashboardPage({
                     {formatDateLongFR(a.date)} · {a.heure} · {DOM_EXT_LABEL[a.domicileExterieur as keyof typeof DOM_EXT_LABEL] ?? a.domicileExterieur}
                     {a.stadeDispo ? ` · stade ${a.stadeNom}` : ""}
                     {a.arbitreDispo ? " · arbitre" : ""}
+                    {!isEditable && (
+                      <span className="ml-2 text-muted-2">(date passée)</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -202,15 +209,21 @@ export default async function DashboardPage({
                         <input type="hidden" name="statut" value="annule" />
                         <button className="btn-ghost text-xs" type="submit">Annuler</button>
                       </form>
-                      <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-ghost text-xs">
-                        Modifier
-                      </Link>
                     </>
                   )}
-                  <form action={deleteAnnonceAction} className="inline">
-                    <input type="hidden" name="id" value={a.id} />
-                    <button className="btn-danger text-xs" type="submit">Supprimer</button>
-                  </form>
+                  {isEditable && (
+                    <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-ghost text-xs">
+                      Modifier
+                    </Link>
+                  )}
+                  <ConfirmDeleteForm
+                    action={deleteAnnonceAction}
+                    hiddenName="id"
+                    hiddenValue={a.id}
+                    buttonClassName="btn-danger text-xs"
+                    title="Supprimer l’annonce"
+                    message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
+                  />
                 </div>
               </div>
             );

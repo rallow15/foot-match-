@@ -57,6 +57,11 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# claude local plans / agent artifacts
+/.claude
+/claude-plans
+*.claude.md.bak
+
 # python cache
 __pycache__/
 *.pyc
