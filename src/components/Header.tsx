@@ -136,7 +136,9 @@ export function Header({ club }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink-3/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Logo />
+        <div className="rounded-md bg-paper p-1.5 shadow-sm ring-1 ring-line/30">
+          <Logo />
+        </div>
 
         <nav className="hidden items-center gap-7 text-sm font-medium text-muted md:flex">
           {NAV_LINKS.map((link) => (
