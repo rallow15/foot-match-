@@ -16,6 +16,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/annonces", label: "Rechercher" },
   { href: "/matchs-confirmees", label: "Matchs confirmés" },
   { href: "/comment-ca-marche", label: "Comment ça marche" },
+  { href: "/ajouter-ecran-accueil", label: "Installer l’app" },
 ];
 
 interface HeaderProps {

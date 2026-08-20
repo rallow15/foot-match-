@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { createPortal } from "react-dom";
 
 interface ConfirmDeleteFormProps {
   action: (formData: FormData) => void | Promise<void>;
@@ -43,6 +44,28 @@ export function ConfirmDeleteForm({
 }: ConfirmDeleteFormProps) {
   const [open, setOpen] = useState(false);
 
+  const modal = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.currentTarget === e.target) setOpen(false);
+      }}
+    >
+      <div className="card w-full max-w-md p-6 shadow-2xl">
+        <h3 className="headline text-xl text-paper">{title}</h3>
+        <p className="mt-3 text-sm leading-relaxed text-muted">{message}</p>
+        <form
+          action={action}
+          onSubmit={() => setOpen(false)}
+          className="contents"
+        >
+          <input type="hidden" name={hiddenName} value={hiddenValue} />
+          <SubmitButtons onCancel={() => setOpen(false)} />
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <button
@@ -53,27 +76,9 @@ export function ConfirmDeleteForm({
         {buttonLabel}
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.currentTarget === e.target) setOpen(false);
-          }}
-        >
-          <div className="card w-full max-w-md p-6">
-            <h3 className="headline text-xl text-paper">{title}</h3>
-            <p className="mt-3 text-sm leading-relaxed text-muted">{message}</p>
-            <form
-              action={action}
-              onSubmit={() => setOpen(false)}
-              className="contents"
-            >
-              <input type="hidden" name={hiddenName} value={hiddenValue} />
-              <SubmitButtons onCancel={() => setOpen(false)} />
-            </form>
-          </div>
-        </div>
-      )}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(modal, document.body)}
     </>
   );
 }
