@@ -96,7 +96,9 @@ a, button {
 @layer components {
   .btn,
   .btn-accent,
+  .btn-accent-sm,
   .btn-ghost,
+  .btn-ghost-light,
   .btn-ghost-on-blue,
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 font-display uppercase tracking-wide font-semibold
@@ -107,9 +109,17 @@ a, button {
     @apply px-5 py-2.5 bg-accent text-[#04210f] rounded-sm
            hover:bg-accent-strong hover:shadow-[0_0_24px_-4px_var(--accent)] active:scale-[0.98];
   }
+  .btn-accent-sm {
+    @apply px-4 py-2 bg-accent text-[#04210f] rounded-sm
+           hover:bg-accent-strong hover:shadow-[0_0_16px_-4px_var(--accent)] active:scale-[0.98];
+  }
   .btn-ghost {
     @apply px-4 py-2.5 text-paper border border-line rounded-sm
            hover:bg-ink-4 hover:border-muted-2;
+  }
+  .btn-ghost-light {
+    @apply px-4 py-2.5 text-ink border border-line rounded-sm
+           hover:bg-[#B9E6FE] hover:border-[#7DD3FC];
   }
   .btn-ghost-on-blue {
     @apply px-4 py-2.5 text-paper border border-white/30 rounded-sm

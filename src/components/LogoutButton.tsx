@@ -8,11 +8,15 @@ export function LogoutButton({
   variant = "dark",
 }: {
   className?: string;
-  variant?: "dark" | "light";
+  variant?: "dark" | "light" | "accent";
 }) {
   const [, formAction, pending] = useActionState(logoutAction, undefined);
   const btnClass =
-    variant === "light" ? "btn-ghost-on-blue" : "btn-ghost";
+    variant === "accent"
+      ? "btn-accent-sm"
+      : variant === "light"
+      ? "btn-ghost-on-blue"
+      : "btn-ghost";
 
   return (
     <form action={formAction} className={className}>

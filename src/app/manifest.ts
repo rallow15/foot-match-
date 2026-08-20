@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Plateforme de mise en relation entre clubs amateurs de football pour organiser des matchs amicaux.",
     start_url: "/",
     display: "standalone",
-    background_color: "#070b14",
-    theme_color: "#070b14",
+    background_color: "#E0F2FE",
+    theme_color: "#E0F2FE",
     orientation: "portrait",
     icons: [
       {

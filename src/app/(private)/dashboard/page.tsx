@@ -7,6 +7,7 @@ import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { StatutAnnonceBadge, StatutVerifBadge, NiveauBadge } from "@/components/Badges";
 import { EquipeForm } from "@/components/dashboard/EquipeForm";
 import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
+import { ClubAvatar } from "@/components/ClubAvatar";
 import {
   deleteAnnonceAction,
   deleteEquipeAction,
@@ -42,19 +43,22 @@ export default async function DashboardPage({
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       {/* En-tête club */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow text-accent">Mon espace</p>
-          <h1 className="headline mt-1 text-4xl text-paper">{club.nom}</h1>
-          <p className="mt-1 text-sm text-muted">
-            📍 {club.district} · {club.ville} ({club.codePostal}) · {club.telephone} · {club.email}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue}</p>
+        <div className="flex items-start gap-4">
+          <ClubAvatar club={{ nom: club.nom, logoUrl: club.logoUrl }} size={72} />
+          <div>
+            <p className="eyebrow text-accent">Mon espace</p>
+            <h1 className="headline mt-1 text-4xl text-paper">{club.nom}</h1>
+            <p className="mt-1 text-sm text-muted">
+              📍 {club.district} · {club.ville} ({club.codePostal}) · {club.telephone} · {club.email}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue}</p>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <StatutVerifBadge statut={club.statutVerification} />
           <div className="flex gap-3 text-xs">
             <Link href="/dashboard/profil" className="text-muted hover:text-accent">
-              Profil & logo →
+              Profil →
             </Link>
           </div>
         </div>

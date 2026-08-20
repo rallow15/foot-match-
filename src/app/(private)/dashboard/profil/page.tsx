@@ -17,7 +17,7 @@ export default async function ProfilPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p className="eyebrow text-accent">Mon espace</p>
-      <h1 className="headline title-bar mt-1 text-3xl text-paper">Profil du club</h1>
+      <h1 className="headline title-bar mt-1 text-3xl text-paper">Profil</h1>
 
       {/* Aperçu profil public */}
       <section className="card mt-6 p-6">

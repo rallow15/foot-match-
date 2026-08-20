@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AppleLogo } from "@/components/AppleLogo";
+import { AndroidLogo } from "@/components/AndroidLogo";
 
 export const metadata: Metadata = {
   title: "Ajouter Matchs Amicaux à votre écran d’accueil",
@@ -77,7 +79,7 @@ export default function AjouterEcranAccueilPage() {
       <div className="mt-10 grid gap-5 sm:grid-cols-2">
         <div className="card p-6">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🍎</span>
+            <AppleLogo className="h-7 w-auto text-paper" />
             <h2 className="headline text-2xl text-paper">iPhone & iPad</h2>
           </div>
           <p className="mt-1 text-xs text-muted">Safari · iOS 13+</p>
@@ -86,7 +88,7 @@ export default function AjouterEcranAccueilPage() {
 
         <div className="card p-6">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🤖</span>
+            <AndroidLogo className="h-7 w-auto text-accent" />
             <h2 className="headline text-2xl text-paper">Android</h2>
           </div>
           <p className="mt-1 text-xs text-muted">Chrome · Android 5+</p>
