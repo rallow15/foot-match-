@@ -132,7 +132,7 @@ export default async function DashboardPage({
                   action={deleteEquipeAction}
                   hiddenName="id"
                   hiddenValue={e.id}
-                  buttonClassName="btn-danger text-xs"
+                  buttonClassName="btn-xs-danger"
                   title="Supprimer l’équipe"
                   message={`Voulez-vous vraiment supprimer l’équipe « ${getCategorie(e.categorie)?.label ?? e.categorie} » ? Cette action est irréversible.`}
                 />
@@ -189,7 +189,7 @@ export default async function DashboardPage({
                     )}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {a.statut === "ouvert" && (
                     <>
                       <form action={setAnnonceStatutAction} className="flex flex-wrap items-center gap-2">
@@ -204,24 +204,26 @@ export default async function DashboardPage({
                         />
                         <button className="btn-xs-accent" type="submit">Confirmer le match</button>
                       </form>
-                      <form action={setAnnonceStatutAction} className="inline">
-                        <input type="hidden" name="id" value={a.id} />
-                        <input type="hidden" name="statut" value="annule" />
-                        <button className="btn-xs-ghost" type="submit">Annuler</button>
-                      </form>
-                      {isEditable && (
-                        <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-xs-ghost">
-                          Modifier
-                        </Link>
-                      )}
-                      <ConfirmDeleteForm
-                        action={deleteAnnonceAction}
-                        hiddenName="id"
-                        hiddenValue={a.id}
-                        buttonClassName="btn-xs-danger"
-                        title="Supprimer l’annonce"
-                        message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
-                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <form action={setAnnonceStatutAction} className="inline">
+                          <input type="hidden" name="id" value={a.id} />
+                          <input type="hidden" name="statut" value="annule" />
+                          <button className="btn-xs-ghost" type="submit">Annuler</button>
+                        </form>
+                        {isEditable && (
+                          <Link href={`/dashboard/annonces/${a.id}/modifier`} className="btn-xs-ghost">
+                            Modifier
+                          </Link>
+                        )}
+                        <ConfirmDeleteForm
+                          action={deleteAnnonceAction}
+                          hiddenName="id"
+                          hiddenValue={a.id}
+                          buttonClassName="btn-xs-danger"
+                          title="Supprimer l’annonce"
+                          message={`Voulez-vous vraiment supprimer l’annonce du ${formatDateLongFR(a.date)} ? Cette action est irréversible.`}
+                        />
+                      </div>
                     </>
                   )}
                   {a.statut !== "ouvert" && isEditable && (

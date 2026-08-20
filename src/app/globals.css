@@ -48,6 +48,14 @@ body {
     radial-gradient(1200px 600px at 80% -10%, rgba(46, 224, 106, 0.06), transparent 60%),
     radial-gradient(1000px 500px at 0% 0%, rgba(45, 125, 246, 0.07), transparent 55%),
     var(--ink);
+  /* Anti-saccade : on garantit un rendu cohérent sans mouvements brusques. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Lien / bouton global : hover fluide */
+a, button {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Typo condensée majuscule pour titres (style FIFA) */
@@ -109,25 +117,25 @@ body {
 
   /* Petits boutons d'action du dashboard (Confirmer / Annuler / Modifier / Supprimer) */
   .btn-xs-accent {
-    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
-           inline-flex items-center justify-center gap-1.5
-           transition-all duration-300 ease-out select-none cursor-pointer
+    @apply px-2.5 py-1 text-[11px] font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1
+           transition-all duration-200 ease-out select-none cursor-pointer
            disabled:opacity-50 disabled:cursor-not-allowed
            bg-accent text-[#04210f] rounded-sm
-           hover:bg-accent-strong hover:shadow-[0_0_16px_-4px_var(--accent)] active:scale-[0.98];
+           hover:bg-accent-strong hover:shadow-[0_0_12px_-4px_var(--accent)] active:scale-[0.98];
   }
   .btn-xs-ghost {
-    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
-           inline-flex items-center justify-center gap-1.5
-           transition-all duration-300 ease-out select-none cursor-pointer
+    @apply px-2.5 py-1 text-[11px] font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1
+           transition-all duration-200 ease-out select-none cursor-pointer
            disabled:opacity-50 disabled:cursor-not-allowed
            text-paper border border-line rounded-sm
            hover:bg-ink-4 hover:border-muted-2;
   }
   .btn-xs-danger {
-    @apply px-3 py-1.5 text-xs font-display uppercase tracking-wide font-semibold
-           inline-flex items-center justify-center gap-1.5
-           transition-all duration-300 ease-out select-none cursor-pointer
+    @apply px-2.5 py-1 text-[11px] font-display uppercase tracking-wide font-semibold
+           inline-flex items-center justify-center gap-1
+           transition-all duration-200 ease-out select-none cursor-pointer
            disabled:opacity-50 disabled:cursor-not-allowed
            text-paper border border-line rounded-sm
            hover:border-danger hover:text-danger;
@@ -173,38 +181,47 @@ body {
 
 /* Animations subtiles au scroll (reveal) */
 @keyframes rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .reveal {
-  animation: rise 0.5s ease-out both;
+  animation: rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Fade-in doux au chargement des pages */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .fade-in {
-  animation: fadeIn 0.4s ease-out both;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Apparition en cascade des éléments de liste */
 .stagger-children > * {
   opacity: 0;
-  animation: rise 0.4s ease-out forwards;
+  animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
-.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
-.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
-.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
-.stagger-children > *:nth-child(9) { animation-delay: 480ms; }
-.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
-.stagger-children > *:nth-child(n+11) { animation-delay: 600ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+.stagger-children > *:nth-child(n+11) { animation-delay: 500ms; }
+
+/* Effet de "pulse" très subtil sur les accents au hover */
+@keyframes softPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 224, 106, 0); }
+  50% { box-shadow: 0 0 18px -6px rgba(46, 224, 106, 0.35); }
+}
+.btn-accent:hover {
+  animation: softPulse 2.5s ease-in-out infinite;
+}
 
 /* Ligne d'accent sous les titres de section */
 .title-bar::after {

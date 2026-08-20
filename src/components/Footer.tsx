@@ -3,37 +3,36 @@ import { Logo } from "./Logo";
 
 export function Footer() {
   return (
-    <footer className="relative z-10 mt-20 border-t border-line bg-ink-2">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
+    <footer className="relative z-0 mt-12 border-t border-line bg-ink-2">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-2">
           <Logo />
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
+          <p className="mt-3 max-w-sm text-xs leading-relaxed text-muted">
             La plateforme qui met en relation les clubs amateurs de football pour
-            organiser des matchs amicaux. Proposez, cherchez, contactez — le reste
-            se règle par téléphone ou WhatsApp.
+            organiser des matchs amicaux.
           </p>
         </div>
         <div>
-          <p className="eyebrow mb-3">Plateforme</p>
-          <ul className="space-y-2 text-sm text-muted">
-            <li><Link href="/annonces" className="hover:text-paper">Rechercher un match</Link></li>
-            <li><Link href="/matchs-confirmees" className="hover:text-paper">Matchs confirmés</Link></li>
-            <li><Link href="/inscription" className="hover:text-paper">Inscrire mon club</Link></li>
-            <li><Link href="/comment-ca-marche" className="hover:text-paper">Comment ça marche</Link></li>
+          <p className="eyebrow mb-2 text-[0.65rem]">Plateforme</p>
+          <ul className="space-y-1.5 text-xs text-muted">
+            <li><Link href="/annonces" className="hover:text-paper transition-colors">Rechercher</Link></li>
+            <li><Link href="/matchs-confirmees" className="hover:text-paper transition-colors">Confirmés</Link></li>
+            <li><Link href="/inscription" className="hover:text-paper transition-colors">Inscription</Link></li>
+            <li><Link href="/comment-ca-marche" className="hover:text-paper transition-colors">Comment ça marche</Link></li>
           </ul>
         </div>
         <div>
-          <p className="eyebrow mb-3">À propos</p>
-          <ul className="space-y-2 text-sm text-muted">
-            <li className="text-muted-2">MVP — zone de lancement ciblée</li>
-            <li className="text-muted-2">Vérification manuelle des licences</li>
-            <li className="text-muted-2">Pas de gestion de résultats</li>
+          <p className="eyebrow mb-2 text-[0.65rem]">À propos</p>
+          <ul className="space-y-1.5 text-xs text-muted">
+            <li className="text-muted-2">MVP lancement ciblé</li>
+            <li className="text-muted-2">Licences vérifiées manuellement</li>
+            <li className="text-muted-2">Sans gestion de résultats</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-line">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-muted-2 sm:flex-row sm:px-6">
-          <p>© {new Date().getFullYear()} Matchs Amicaux — démo MVP</p>
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-3 text-[11px] text-muted-2 sm:flex-row sm:px-6">
+          <p>© {new Date().getFullYear()} Matchs Amicaux — MVP</p>
           <p>Fait pour le foot amateur</p>
         </div>
       </div>

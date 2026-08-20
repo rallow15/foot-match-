@@ -3,7 +3,6 @@ import { Inter, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { BackgroundVideo } from "@/components/BackgroundVideo";
 import { getCurrentClub } from "@/lib/auth";
 
 const inter = Inter({
@@ -48,7 +47,16 @@ export default async function RootLayout({
       className={`${inter.variable} ${barlow.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-ink text-paper">
-        <BackgroundVideo />
+        <div
+          className="fixed inset-0 z-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(1200px 600px at 80% -10%, rgba(46, 224, 106, 0.10), transparent 60%), " +
+              "radial-gradient(1000px 500px at 0% 0%, rgba(45, 125, 246, 0.12), transparent 55%), " +
+              "linear-gradient(180deg, #0a1115 0%, #0d1418 100%)",
+          }}
+        />
         <Header club={headerClub} />
         <main className="relative z-10 flex-1 fade-in">{children}</main>
         <Footer />
