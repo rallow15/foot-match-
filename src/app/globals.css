@@ -97,6 +97,7 @@ a, button {
   .btn,
   .btn-accent,
   .btn-ghost,
+  .btn-ghost-light,
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 font-display uppercase tracking-wide font-semibold
            transition-all duration-300 ease-out select-none cursor-pointer
@@ -109,6 +110,10 @@ a, button {
   .btn-ghost {
     @apply px-4 py-2.5 text-paper border border-line rounded-sm
            hover:bg-ink-4 hover:border-muted-2;
+  }
+  .btn-ghost-light {
+    @apply px-4 py-2.5 text-ink border border-line rounded-sm
+           hover:bg-[#B9E6FE] hover:border-[#7DD3FC];
   }
   .btn-danger {
     @apply px-4 py-2.5 text-paper border border-line rounded-sm

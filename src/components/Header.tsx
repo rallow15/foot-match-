@@ -39,7 +39,7 @@ function MobileMenu({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-16 z-50 border-b border-line bg-ink shadow-lg md:hidden">
+    <div className="absolute left-0 right-0 top-16 z-50 border-b border-line bg-[#E0F2FE] shadow-lg md:hidden">
       <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4">
         {NAV_LINKS.map((link) => (
           <MobileNavItem key={link.href} href={link.href} onClick={onClose}>
@@ -84,7 +84,7 @@ function MobileNavItem({
       href={href}
       prefetch
       onClick={onClick}
-      className="rounded-sm px-3 py-3 text-sm font-medium text-muted transition-colors hover:bg-ink-3 hover:text-paper"
+      className="rounded-sm px-3 py-3 text-sm font-medium text-ink transition-colors hover:bg-[#B9E6FE] hover:text-ink-2"
     >
       {children}
     </Link>
@@ -102,7 +102,7 @@ function HamburgerButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-sm text-muted hover:text-paper focus:outline-none focus:ring-2 focus:ring-accent md:hidden"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-sm text-ink hover:text-ink-2 focus:outline-none focus:ring-2 focus:ring-accent md:hidden"
       aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
       aria-expanded={isOpen}
       aria-controls="mobile-menu"
@@ -134,20 +134,18 @@ export function Header({ club }: HeaderProps) {
   const isAdmin = club?.role === "admin";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink-3/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="rounded-md bg-paper p-1.5 shadow-sm ring-1 ring-line/30">
-          <Logo />
-        </div>
+        <Logo />
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-muted md:flex">
+        <nav className="hidden items-center gap-7 text-sm font-medium text-ink md:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               prefetch
-              className={`transition-colors hover:text-paper ${
-                pathname === link.href ? "text-paper" : ""
+              className={`transition-colors hover:text-ink-2 ${
+                pathname === link.href ? "text-ink-2" : ""
               }`}
             >
               {link.label}
@@ -157,8 +155,8 @@ export function Header({ club }: HeaderProps) {
             <Link
               href="/dashboard"
               prefetch
-              className={`transition-colors hover:text-paper ${
-                pathname?.startsWith("/dashboard") ? "text-paper" : ""
+              className={`transition-colors hover:text-ink-2 ${
+                pathname?.startsWith("/dashboard") ? "text-ink-2" : ""
               }`}
             >
               Mon espace
@@ -183,18 +181,18 @@ export function Header({ club }: HeaderProps) {
               {club.role === "club" ? (
                 <Link
                   href="/dashboard/profil"
-                  className="hidden text-sm text-muted hover:text-paper sm:inline"
+                  className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
                 >
                   {club.nom}
                 </Link>
               ) : (
-                <span className="hidden text-sm text-muted sm:inline">{club.nom}</span>
+                <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
               )}
               <LogoutButton className="hidden md:inline" />
             </>
           ) : (
             <>
-              <Link href="/login" className="btn-ghost hidden text-sm md:inline">
+              <Link href="/login" className="btn-ghost-light hidden text-sm md:inline">
                 Se connecter
               </Link>
               <Link href="/inscription" className="btn-accent text-sm">
