@@ -55,8 +55,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
-
 # claude local plans / agent artifacts
 /.claude
 /claude-plans
