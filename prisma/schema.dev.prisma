@@ -1,0 +1,115 @@
+// Schéma SQLite pour le développement local UNIQUEMENT.
+// Le schéma de production reste schema.prisma (PostgreSQL / Supabase).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Club {
+  id                   String     @id @default(cuid())
+  nom                  String
+  ville                String
+  codePostal           String
+  latitude             Float
+  longitude            Float
+  ligue                String
+  district             String
+  telephone            String
+  email                String     @unique
+  logoUrl              String?
+  licenceFichierUrl    String?
+  statutVerification   String     @default("en_attente")
+  refusMotif           String?
+  passwordHash         String
+  role                 String     @default("club")
+  failedLoginAttempts  Int        @default(0)
+  lockedUntil          DateTime?
+  derniereActiviteAt   DateTime   @default(now())
+  createdAt            DateTime   @default(now())
+
+  equipes              Equipe[]
+  sessions             Session[]
+  annonces             Annonce[]   @relation("AnnoncePar")
+  passwordResetTokens  PasswordResetToken[]
+
+  @@index([statutVerification])
+  @@index([email])
+}
+
+model Equipe {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  categorie String
+  niveau    String?
+
+  annonces  Annonce[]
+
+  @@index([clubId])
+  @@index([categorie])
+}
+
+model Annonce {
+  id                String   @id @default(cuid())
+  equipeId          String
+  equipe            Equipe   @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  clubId            String
+  club              Club     @relation("AnnoncePar", fields: [clubId], references: [id], onDelete: Cascade)
+  date              String
+  heure             String
+  domicileExterieur String
+  stadeDispo        Boolean  @default(false)
+  stadeNom          String?
+  stadeVille        String?
+  arbitreDispo      Boolean  @default(false)
+  niveauSouhaite    String?
+  note              String?
+  adversaireNom     String?
+  statut            String   @default("ouvert")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([equipeId])
+  @@index([clubId])
+  @@index([statut])
+  @@index([date])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([resetAt])
+}
