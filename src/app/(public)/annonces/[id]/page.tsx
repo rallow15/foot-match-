@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchAnnonceByIdCached as fetchAnnonceById } from "@/lib/queries";
+import { getCurrentClub } from "@/lib/auth";
 import { getCategorie, DOM_EXT_LABEL, NIVEAU_LABEL } from "@/lib/referential";
 import { formatDateLongFR, relTime, todayISO } from "@/lib/utils";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 import { ClubAvatar } from "@/components/ClubAvatar";
-import { AnnonceContactPanel } from "@/components/AnnonceContactPanel";
+import { ContactForm } from "@/components/ContactForm";
 
 export const revalidate = 60;
-export const dynamic = "force-static";
 
 export default async function AnnonceDetailPage({
   params,
@@ -17,18 +17,27 @@ export default async function AnnonceDetailPage({
 }) {
   const { id } = await params;
   const annonce = await fetchAnnonceById(id);
+  // 404 si introuvable, annulée, ou à date passée : l'auto-expiration s'applique
+  // aussi à l'accès direct (la recherche filtre déjà date >= today, mais un
+  // lien direct sur une annonce périmée ne doit ni s'afficher ni être
+  // contactable).
   if (!annonce || annonce.statut === "annule" || annonce.date < todayISO()) notFound();
 
   const cat = getCategorie(annonce.equipe.categorie);
   const dom = annonce.domicileExterieur as keyof typeof DOM_EXT_LABEL;
+  const club = await getCurrentClub();
+  const isOwn = club?.id === annonce.clubId;
+  const canContact =
+    !!club && club.role === "club" && club.statutVerification === "valide" && !isOwn && annonce.statut === "ouvert";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <Link href="/" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        {/* Détail */}
         <article className="card overflow-hidden">
-          <div className="relative border-b border-line bg-gradient-to-br from-ink-3 to-ink-2 px-6 py-6">
+          <div className="border-b border-line bg-gradient-to-br from-ink-3 to-ink-2 px-6 py-6">
             <p className="eyebrow text-accent">{cat?.groupe === "jeunes" ? "Jeunes" : "Adultes / Loisirs"}</p>
             <h1 className="headline mt-1 text-5xl text-paper">{cat?.label}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -76,8 +85,41 @@ export default async function AnnonceDetailPage({
           </div>
         </article>
 
+        {/* Panneau contact */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <AnnonceContactPanel annonceId={annonce.id} annonceClubId={annonce.clubId} />
+          {isOwn ? (
+            <div className="card p-6 text-center">
+              <p className="headline text-xl text-paper">C&apos;est votre annonce</p>
+              <p className="mt-2 text-sm text-muted">
+                Gérez-la depuis votre espace club.
+              </p>
+              <Link href="/dashboard" className="btn-ghost mt-4">Mon espace</Link>
+            </div>
+          ) : !club ? (
+            <div className="card p-6 text-center">
+              <p className="headline text-xl text-paper">Connectez-vous pour contacter</p>
+              <p className="mt-2 text-sm text-muted">
+                La mise en relation est réservée aux clubs vérifiés.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <Link href="/login" className="btn-accent">Se connecter</Link>
+                <Link href="/inscription" className="btn-ghost">Inscrire mon club</Link>
+              </div>
+            </div>
+          ) : club.statutVerification !== "valide" ? (
+            <div className="card p-6 text-center">
+              <p className="headline text-xl text-paper">Compte en vérification</p>
+              <p className="mt-2 text-sm text-muted">
+                Votre compte doit être validé pour contacter un club.
+              </p>
+            </div>
+          ) : canContact ? (
+            <ContactForm annonceId={annonce.id} />
+          ) : (
+            <div className="card p-6 text-center">
+              <p className="text-sm text-muted">Cette annonce n&apos;est plus ouverte.</p>
+            </div>
+          )}
         </aside>
       </div>
     </div>
