@@ -7,6 +7,7 @@ import { ClubAvatar } from "@/components/ClubAvatar";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 
 export const revalidate = 60;
+export const dynamic = "force-static";
 
 export default async function ClubProfilePage({
   params,
