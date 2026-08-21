@@ -129,7 +129,7 @@ function HamburgerButton({
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [club, setClub] = useState<Club | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState(false);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
 
@@ -140,13 +140,13 @@ export function Header() {
       .then((data) => {
         if (!cancelled) {
           setClub(data ?? null);
-          setLoading(false);
+          setChecked(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setClub(null);
-          setLoading(false);
+          setChecked(true);
         }
       });
     return () => {
@@ -197,9 +197,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {loading ? (
-            <span className="hidden text-sm text-ink md:inline">…</span>
-          ) : club ? (
+          {club ? (
             <>
               {club.role === "club" ? (
                 <Link
