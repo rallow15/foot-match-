@@ -7,6 +7,7 @@ import { ClubAvatar } from "@/components/ClubAvatar";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 
 export const revalidate = 60;
+export const dynamic = "force-static";
 
 export default async function ClubProfilePage({
   params,
@@ -16,7 +17,6 @@ export default async function ClubProfilePage({
   const { id } = await params;
   const club = await fetchClubProfile(id);
 
-  // Pas de profil public pour : introuvable, admin, ou club refusé.
   if (!club || club.role === "admin" || club.statutVerification === "refuse") {
     notFound();
   }
@@ -27,7 +27,6 @@ export default async function ClubProfilePage({
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <Link href="/" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
 
-      {/* En-tête profil */}
       <section className="card mt-4 overflow-hidden">
         <div className="flex flex-col gap-5 bg-gradient-to-br from-ink-3 to-ink-2 p-6 sm:flex-row sm:items-center">
           <ClubAvatar club={{ nom: club.nom, logoUrl: club.logoUrl }} size={96} />
@@ -47,7 +46,6 @@ export default async function ClubProfilePage({
         </div>
       </section>
 
-      {/* Équipes */}
       <section className="mt-8">
         <h2 className="headline title-bar text-2xl text-paper">Équipes</h2>
         {club.equipes.length === 0 ? (
@@ -56,9 +54,7 @@ export default async function ClubProfilePage({
           <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {club.equipes.map((e) => (
               <li key={e.id} className="card flex items-center justify-between p-4">
-                <span className="headline text-lg text-paper">
-                  {getCategorie(e.categorie)?.label ?? e.categorie}
-                </span>
+                <span className="headline text-lg text-paper">{getCategorie(e.categorie)?.label ?? e.categorie}</span>
                 {e.niveau ? <NiveauBadge niveau={e.niveau} /> : <span className="text-xs text-muted-2">Niveau —</span>}
               </li>
             ))}
@@ -66,7 +62,6 @@ export default async function ClubProfilePage({
         )}
       </section>
 
-      {/* Annonces ouvertes */}
       <section className="mt-10">
         <h2 className="headline title-bar text-2xl text-paper">Matchs recherchés</h2>
         {club.annonces.length === 0 ? (
