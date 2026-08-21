@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 import { usePathname } from "next/navigation";
@@ -19,10 +19,12 @@ const NAV_LINKS: NavLink[] = [
   { href: "/ajouter-ecran-accueil", label: "Installer l’app" },
 ];
 
-interface Club {
-  id: string;
-  nom: string;
-  role: "club" | "admin";
+interface HeaderProps {
+  club?: {
+    id: string;
+    nom: string;
+    role: "club" | "admin";
+  } | null;
 }
 
 function MobileMenu({
@@ -31,7 +33,7 @@ function MobileMenu({
   onClose,
 }: {
   isOpen: boolean;
-  club?: Club | null;
+  club?: HeaderProps["club"];
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -126,33 +128,10 @@ function HamburgerButton({
   );
 }
 
-export function Header() {
+export function Header({ club }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [club, setClub] = useState<Club | null>(null);
-  const [checked, setChecked] = useState(false);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/me", { credentials: "same-origin" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled) {
-          setClub(data ?? null);
-          setChecked(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setClub(null);
-          setChecked(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
