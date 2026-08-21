@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchAnnonceById } from "@/lib/queries";
+import { fetchAnnonceByIdCached as fetchAnnonceById } from "@/lib/queries";
 import { getCurrentClub } from "@/lib/auth";
 import { getCategorie, DOM_EXT_LABEL, NIVEAU_LABEL } from "@/lib/referential";
 import { formatDateLongFR, relTime, todayISO } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Bad
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { ContactForm } from "@/components/ContactForm";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function AnnonceDetailPage({
   params,

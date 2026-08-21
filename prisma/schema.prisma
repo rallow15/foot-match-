@@ -47,6 +47,8 @@ model Club {
 
   @@index([statutVerification])
   @@index([email])
+  @@index([ligue, district])
+  @@index([statutVerification, role])
 }
 
 model Equipe {
@@ -62,6 +64,7 @@ model Equipe {
 
   @@index([clubId])
   @@index([categorie])
+  @@index([categorie, niveau])
 }
 
 model Annonce {
@@ -93,6 +96,8 @@ model Annonce {
   @@index([clubId])
   @@index([statut])
   @@index([date])
+  @@index([statut, date])
+  @@index([statut, date, clubId])
 }
 
 

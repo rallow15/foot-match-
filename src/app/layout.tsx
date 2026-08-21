@@ -3,7 +3,6 @@ import { Inter, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { getCurrentClub } from "@/lib/auth";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -41,23 +40,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-// Layout racine dynamique : le header reflète l'état de connexion sur toutes les
-// pages. Les pages publiques perdent le cache CDN/ISR statique, mais l'expérience
-// utilisateur est cohérente (pas de header "déconnecté" sur les pages publiques).
+// Layout racine statique : le header gere l'auth cote client via /api/me
+// pour permettre le cache CDN/ISR des pages publiques.
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const club = await getCurrentClub();
-  const headerClub = club
-    ? {
-        id: club.id,
-        nom: club.nom,
-        role: club.role as "club" | "admin",
-      }
-    : null;
-
   return (
     <html
       lang="fr"
@@ -74,7 +63,7 @@ export default async function RootLayout({
               "linear-gradient(180deg, #0a1115 0%, #0d1418 100%)",
           }}
         />
-        <Header club={headerClub} />
+        <Header />
         <main className="relative z-10 flex-1 fade-in">{children}</main>
         <Footer />
       </body>

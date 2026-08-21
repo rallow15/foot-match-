@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchClubProfile } from "@/lib/queries";
+import { fetchClubProfileCached as fetchClubProfile } from "@/lib/queries";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { formatDateLongFR, relTime } from "@/lib/utils";
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ClubProfilePage({
   params,

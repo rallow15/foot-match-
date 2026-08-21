@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 import { usePathname } from "next/navigation";
@@ -19,12 +19,10 @@ const NAV_LINKS: NavLink[] = [
   { href: "/ajouter-ecran-accueil", label: "Installer l’app" },
 ];
 
-interface HeaderProps {
-  club?: {
-    id: string;
-    nom: string;
-    role: "club" | "admin";
-  } | null;
+interface Club {
+  id: string;
+  nom: string;
+  role: "club" | "admin";
 }
 
 function MobileMenu({
@@ -33,7 +31,7 @@ function MobileMenu({
   onClose,
 }: {
   isOpen: boolean;
-  club?: HeaderProps["club"];
+  club?: Club | null;
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -128,10 +126,33 @@ function HamburgerButton({
   );
 }
 
-export function Header({ club }: HeaderProps) {
+export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [club, setClub] = useState<Club | null>(null);
+  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me", { credentials: "same-origin" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setClub(data ?? null);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClub(null);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
@@ -176,7 +197,9 @@ export function Header({ club }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {club ? (
+          {loading ? (
+            <span className="hidden text-sm text-ink md:inline">…</span>
+          ) : club ? (
             <>
               {club.role === "club" ? (
                 <Link

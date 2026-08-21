@@ -9,20 +9,32 @@ import { StatutVerifBadge } from "@/components/Badges";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] | undefined }>;
+}) {
   const me = await getCurrentClub();
   if (!me) redirect("/login");
   if (me.role !== "admin") redirect("/dashboard");
 
-  const [pending, recent] = await Promise.all([
-    fetchPendingClubs(),
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(typeof sp.page === "string" ? sp.page : "1", 10) || 1);
+  const pageSize = 50;
+  const skip = (page - 1) * pageSize;
+
+  const [pending, recent, totalPending] = await Promise.all([
+    fetchPendingClubs(pageSize, skip),
     prisma.club.findMany({
       where: { role: "club", statutVerification: { in: ["valide", "refuse"] } },
       orderBy: { derniereActiviteAt: "desc" },
       take: 8,
       select: { id: true, nom: true, statutVerification: true, refusMotif: true, derniereActiviteAt: true },
     }),
+    prisma.club.count({ where: { role: "club", statutVerification: "en_attente" } }),
   ]);
+
+  const totalPages = Math.ceil(totalPending / pageSize);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -30,7 +42,7 @@ export default async function AdminPage() {
       <h1 className="headline title-bar mt-1 text-3xl text-paper">Vérification des licences</h1>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Stat label="En attente" value={pending.length} accent />
+        <Stat label="En attente" value={totalPending} accent />
         <Stat label="Validés" value={await prisma.club.count({ where: { role: "club", statutVerification: "valide" } })} />
         <Stat label="Total clubs" value={await prisma.club.count({ where: { role: "club" } })} />
       </div>
@@ -90,6 +102,17 @@ export default async function AdminPage() {
               </li>
             ))}
           </ul>
+        )}
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            {page > 1 && (
+              <a href={`/admin?page=${page - 1}`} className="btn-ghost text-xs">← Précédent</a>
+            )}
+            <span className="text-sm text-muted">Page {page} / {totalPages}</span>
+            {page < totalPages && (
+              <a href={`/admin?page=${page + 1}`} className="btn-ghost text-xs">Suivant →</a>
+            )}
+          </div>
         )}
       </section>
 

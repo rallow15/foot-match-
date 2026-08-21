@@ -14,7 +14,7 @@ function buildDatabaseUrl(): string | undefined {
     const url = new URL(raw);
     const current = url.searchParams.get("connection_limit");
     if (!current) {
-      const limit = process.env.PRISMA_CONNECTION_LIMIT ?? "9";
+      const limit = process.env.PRISMA_CONNECTION_LIMIT ?? "25";
       url.searchParams.set("connection_limit", limit);
     }
     return url.toString();

@@ -44,7 +44,15 @@ export async function fetchAnnonceById(id: string) {
   });
 }
 
-async function _searchAnnoncesImpl(params: SearchParams) {
+export const fetchAnnonceByIdCached = unstable_cache(fetchAnnonceById, ["annonce-by-id"], {
+  revalidate: 60,
+  tags: ["annonces"],
+});
+
+const DEFAULT_PAGE_LIMIT = 48;
+const DEFAULT_DASHBOARD_LIMIT = 100;
+
+async function _searchAnnoncesImpl(params: SearchParams, limit = DEFAULT_PAGE_LIMIT) {
   const where: Record<string, unknown> = {
     statut: "ouvert",
     // auto-expiration : on ne montre que les dates à venir (cf. risque "annonces fantômes")
@@ -58,10 +66,22 @@ async function _searchAnnoncesImpl(params: SearchParams) {
     where.equipe = { ...(where.equipe as object), niveau: params.niveau };
   }
   // Filtre Ligue / District (sous-ligue) — la recherche se fait sur le club annonceur.
-  if (params.ligue || params.district) {
-    const clubFilter: Record<string, unknown> = {};
-    if (params.ligue) clubFilter.ligue = params.ligue;
-    if (params.district) clubFilter.district = params.district;
+  const clubFilter: Record<string, unknown> = {};
+  if (params.ligue) clubFilter.ligue = params.ligue;
+  if (params.district) clubFilter.district = params.district;
+
+  // Bounding-box approximative avant le filtre haversine pour reduire le volume DB.
+  const lat = parseFloat(params.latitude ?? "");
+  const lng = parseFloat(params.longitude ?? "");
+  const rayon = parseFloat(params.rayon ?? "");
+  const hasGeo = !Number.isNaN(lat) && !Number.isNaN(lng) && !Number.isNaN(rayon) && rayon > 0;
+  if (hasGeo) {
+    const delta = rayon / 111; // ~111 km par degre
+    clubFilter.latitude = { gte: lat - delta, lte: lat + delta };
+    clubFilter.longitude = { gte: lng - delta, lte: lng + delta };
+  }
+
+  if (Object.keys(clubFilter).length > 0) {
     where.equipe = { ...(where.equipe as object), club: clubFilter };
   }
   if (params.dateFrom || params.dateTo) {
@@ -83,14 +103,12 @@ async function _searchAnnoncesImpl(params: SearchParams) {
     where,
     include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
     orderBy: { date: "asc" },
+    take: limit,
   });
 
-  // Filtrage géographique (rayon) — calculé en TS après fetch (SQLite sans PostGIS).
+  // Filtrage géographique (rayon) — calculé en TS après fetch sur le sous-ensemble bounding-box.
   let filtered = rows;
-  const lat = parseFloat(params.latitude ?? "");
-  const lng = parseFloat(params.longitude ?? "");
-  const rayon = parseFloat(params.rayon ?? "");
-  if (!Number.isNaN(lat) && !Number.isNaN(lng) && !Number.isNaN(rayon) && rayon > 0) {
+  if (hasGeo) {
     filtered = rows.filter(
       (a) => haversineKm(lat, lng, a.club.latitude, a.club.longitude) <= rayon,
     );
@@ -101,10 +119,14 @@ async function _searchAnnoncesImpl(params: SearchParams) {
   return filtered;
 }
 
-export const searchAnnonces = unstable_cache(_searchAnnoncesImpl, ["search-annonces"], {
-  revalidate: 60,
-  tags: ["annonces"],
-});
+export const searchAnnonces = unstable_cache(
+  (params: SearchParams) => _searchAnnoncesImpl(params, DEFAULT_PAGE_LIMIT),
+  ["search-annonces"],
+  {
+    revalidate: 60,
+    tags: ["annonces"],
+  },
+);
 
 // Quelques annonces récentes pour la landing page (teaser).
 async function _fetchAnnoncesLandingImpl(limit = 3) {
@@ -160,11 +182,12 @@ export const fetchMatchsConfirmes = unstable_cache(_fetchMatchsConfirmesImpl, ["
   tags: ["matchs-confirmes", "annonces"],
 });
 
-export async function fetchMyAnnonces(clubId: string) {
+export async function fetchMyAnnonces(clubId: string, limit = DEFAULT_DASHBOARD_LIMIT) {
   return prisma.annonce.findMany({
     where: { clubId },
     include: { equipe: true },
     orderBy: { date: "asc" },
+    take: limit,
   });
 }
 
@@ -175,10 +198,12 @@ export async function fetchMyEquipes(clubId: string) {
   });
 }
 
-export async function fetchPendingClubs() {
+export async function fetchPendingClubs(limit = DEFAULT_PAGE_LIMIT, skip = 0) {
   return prisma.club.findMany({
     where: { role: "club", statutVerification: "en_attente" },
     orderBy: { createdAt: "asc" },
+    take: limit,
+    skip,
     select: {
       id: true,
       nom: true,
@@ -197,9 +222,8 @@ export async function fetchPendingClubs() {
   });
 }
 
-// Profil public d'un club : infos + équipes + annonces ouvertes à venir.
-// Aucune coordonnée privée (tél/email) n'est remontée via ce helper — elles
-// ne s'obtiennent que par la mise en relation (contacterAction).
+// Profil public d'un club : infos + equipes + annonces ouvertes a venir.
+// Aucune coordonnee privee (tél/email) n'est remontee via ce helper.
 export async function fetchClubProfile(id: string) {
   return prisma.club.findUnique({
     where: { id },
@@ -214,12 +238,18 @@ export async function fetchClubProfile(id: string) {
       role: true,
       statutVerification: true,
       createdAt: true,
-      equipes: { orderBy: { categorie: "asc" } },
+      equipes: { orderBy: { categorie: "asc" }, take: DEFAULT_DASHBOARD_LIMIT },
       annonces: {
         where: { statut: "ouvert", date: { gte: todayISO() } },
         include: { equipe: true },
         orderBy: { date: "asc" },
+        take: DEFAULT_DASHBOARD_LIMIT,
       },
     },
   });
 }
+
+export const fetchClubProfileCached = unstable_cache(fetchClubProfile, ["club-profile"], {
+  revalidate: 60,
+  tags: ["clubs"],
+});

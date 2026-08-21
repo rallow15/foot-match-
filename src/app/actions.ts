@@ -448,6 +448,12 @@ export async function deleteEquipeAction(formData: FormData): Promise<void> {
 /* ---------------- Annonces ---------------- */
 
 export async function createAnnonceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  // Rate limiting anti-spam d'annonces (10/min par IP).
+  const ip = await getClientIp();
+  if (!(await rateLimit(ip, "create-annonce", { maxRequests: 10, windowMs: 60_000 }))) {
+    return { error: "Trop de publications. Réessayez dans un instant." };
+  }
+
   const club = await getCurrentClub();
   if (!club || club.role !== "club") return { error: "Non autorisé." };
   if (club.statutVerification !== "valide")
@@ -508,6 +514,7 @@ export async function createAnnonceAction(_prev: ActionState, formData: FormData
   revalidatePath("/dashboard");
   updateTag("annonces");
   updateTag("landing");
+  updateTag("clubs");
   redirect("/dashboard");
 }
 
@@ -564,9 +571,11 @@ export async function updateAnnonceAction(_prev: ActionState, formData: FormData
   if (count === 0) return { error: "Annonce introuvable." };
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/annonces/" + id);
   updateTag("annonces");
   updateTag("landing");
   updateTag("matchs-confirmes");
+  updateTag("clubs");
   redirect("/dashboard");
 }
 
@@ -596,9 +605,11 @@ export async function setAnnonceStatutAction(formData: FormData): Promise<void> 
   revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/matchs-confirmees");
+  revalidatePath("/annonces/" + id);
   updateTag("annonces");
   updateTag("landing");
   updateTag("matchs-confirmes");
+  updateTag("clubs");
   redirect("/dashboard");
 }
 
@@ -610,9 +621,11 @@ export async function deleteAnnonceAction(formData: FormData): Promise<void> {
   await prisma.annonce.deleteMany({ where: { id, clubId: club.id } });
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/annonces/" + id);
   updateTag("annonces");
   updateTag("landing");
   updateTag("matchs-confirmes");
+  updateTag("clubs");
   redirect("/dashboard");
 }
 
