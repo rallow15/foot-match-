@@ -144,12 +144,10 @@ export function Header({ club: initialClub }: HeaderProps) {
     let aborted = false;
     fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
       .then((res) => {
-        console.log("[Header] /api/me status", res.status);
         if (!res.ok) throw new Error("me failed: " + res.status);
         return res.json();
       })
-      .then((data: { club: HeaderProps["club"]; debug?: string }) => {
-        console.log("[Header] /api/me data", data);
+      .then((data: { club: HeaderProps["club"] }) => {
         if (!aborted) {
           setClub(data.club);
           setLoading(false);

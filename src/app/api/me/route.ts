@@ -20,7 +20,7 @@ export async function GET() {
   const token = store.get(SESSION_COOKIE)?.value;
 
   if (!token) {
-    return NextResponse.json({ club: null, debug: "no cookie" });
+    return NextResponse.json({ club: null });
   }
 
   const session = await prisma.session.findUnique({
@@ -28,7 +28,7 @@ export async function GET() {
   });
 
   if (!session || session.expiresAt < new Date()) {
-    return NextResponse.json({ club: null, debug: "no session" });
+    return NextResponse.json({ club: null });
   }
 
   const club = await prisma.club.findUnique({
@@ -37,7 +37,7 @@ export async function GET() {
   });
 
   if (!club) {
-    return NextResponse.json({ club: null, debug: "no club" });
+    return NextResponse.json({ club: null });
   }
 
   return NextResponse.json({
