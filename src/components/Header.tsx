@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 import { usePathname } from "next/navigation";
@@ -30,12 +30,10 @@ interface HeaderProps {
 function MobileMenu({
   isOpen,
   club,
-  loading,
   onClose,
 }: {
   isOpen: boolean;
   club?: HeaderProps["club"];
-  loading: boolean;
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -58,11 +56,7 @@ function MobileMenu({
             Validation
           </MobileNavItem>
         )}
-        {loading ? (
-          <div className="px-3 py-3">
-            <span className="text-sm text-muted">Chargement…</span>
-          </div>
-        ) : club ? (
+        {club ? (
           <div className="mt-2 border-t border-line pt-2">
             <LogoutButton className="w-full" variant="accent" />
           </div>
@@ -139,56 +133,10 @@ function HamburgerButton({
   );
 }
 
-function HeaderSkeleton() {
-  return (
-    <div className="hidden items-center gap-3 md:flex">
-      <div className="h-9 w-24 animate-pulse rounded-sm bg-[#B9E6FE]" />
-      <div className="h-9 w-36 animate-pulse rounded-sm bg-[#B9E6FE]" />
-    </div>
-  );
-}
-
-export function Header({ club: initialClub }: HeaderProps) {
+export function Header({ club }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [club, setClub] = useState<HeaderProps["club"]>(initialClub);
-  // undefined  => le layout statique ne sait pas : on affiche un état de
-  //              chargement en attendant /api/me.
-  // null       => connecté connu comme déconnecté (pas de fetch).
-  // club object=> connecté connu comme connecté (pas de fetch).
-  const [loading, setLoading] = useState(initialClub === undefined);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
-
-  useEffect(() => {
-    if (initialClub !== undefined) {
-      // Le layout a déjà résolu l'état (layout dynamique, ou valeur explicite).
-      return;
-    }
-    let aborted = false;
-    fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error("me failed: " + res.status);
-        return res.json();
-      })
-      .then((data: { club: HeaderProps["club"] }) => {
-        if (!aborted) {
-          setClub(data.club);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("[Header] /api/me error", err);
-        if (!aborted) {
-          // En cas d'erreur réseau, on considère l'utilisateur comme déconnecté
-          // pour ne pas bloquer la navigation.
-          setClub(null);
-          setLoading(false);
-        }
-      });
-    return () => {
-      aborted = true;
-    };
-  }, [initialClub]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
@@ -233,19 +181,16 @@ export function Header({ club: initialClub }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {loading ? (
-            <HeaderSkeleton />
-          ) : club ? (
+          {club ? (
             <>
-              {club.role === "club" && (
+              {club.role === "club" ? (
                 <Link
                   href="/dashboard/profil"
                   className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
                 >
                   {club.nom}
                 </Link>
-              )}
-              {club.role === "admin" && (
+              ) : (
                 <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
               )}
               <LogoutButton className="hidden md:inline" variant="accent" />
@@ -266,7 +211,7 @@ export function Header({ club: initialClub }: HeaderProps) {
       </div>
 
       <div id="mobile-menu">
-        <MobileMenu isOpen={menuOpen} club={club} loading={loading} onClose={() => setMenuOpen(false)} />
+        <MobileMenu isOpen={menuOpen} club={club} onClose={() => setMenuOpen(false)} />
       </div>
     </header>
   );
