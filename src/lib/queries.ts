@@ -51,8 +51,12 @@ export async function fetchAnnonceById(id: string) {
   });
 }
 
+// Cache long pour les données publiques peu changeantes : landing, détail,
+// profil, matchs confirmés. Les mutations invalident via les tags.
+const PUBLIC_CACHE_REVALIDATE = 300; // 5 min
+
 export const fetchAnnonceByIdCached = unstable_cache(fetchAnnonceById, ["annonce-by-id"], {
-  revalidate: 60,
+  revalidate: PUBLIC_CACHE_REVALIDATE,
   tags: ["annonces"],
 });
 
@@ -156,7 +160,7 @@ async function _fetchAnnoncesLandingImpl(limit = 3) {
 }
 
 export const fetchAnnoncesLanding = unstable_cache(_fetchAnnoncesLandingImpl, ["annonces-landing"], {
-  revalidate: 60,
+  revalidate: PUBLIC_CACHE_REVALIDATE,
   tags: ["annonces", "landing"],
 });
 
@@ -195,14 +199,30 @@ async function _fetchMatchsConfirmesImpl(ligue: string, district: string) {
 }
 
 export const fetchMatchsConfirmes = unstable_cache(_fetchMatchsConfirmesImpl, ["matchs-confirmes"], {
-  revalidate: 60,
+  revalidate: PUBLIC_CACHE_REVALIDATE,
   tags: ["matchs-confirmes", "annonces"],
 });
+
+const DASHBOARD_ANNONCE_SELECT = {
+  id: true,
+  date: true,
+  heure: true,
+  domicileExterieur: true,
+  stadeDispo: true,
+  stadeNom: true,
+  stadeVille: true,
+  arbitreDispo: true,
+  niveauSouhaite: true,
+  note: true,
+  statut: true,
+  adversaireNom: true,
+  equipe: { select: { id: true, categorie: true, niveau: true } },
+} as const;
 
 export async function fetchMyAnnonces(clubId: string, limit = DEFAULT_DASHBOARD_LIMIT) {
   return prisma.annonce.findMany({
     where: { clubId },
-    include: { equipe: true },
+    select: DASHBOARD_ANNONCE_SELECT,
     orderBy: { date: "asc" },
     take: limit,
   });
@@ -211,6 +231,7 @@ export async function fetchMyAnnonces(clubId: string, limit = DEFAULT_DASHBOARD_
 export async function fetchMyEquipes(clubId: string) {
   return prisma.equipe.findMany({
     where: { clubId },
+    select: { id: true, categorie: true, niveau: true },
     orderBy: { categorie: "asc" },
   });
 }
@@ -267,6 +288,6 @@ export async function fetchClubProfile(id: string) {
 }
 
 export const fetchClubProfileCached = unstable_cache(fetchClubProfile, ["club-profile"], {
-  revalidate: 60,
+  revalidate: PUBLIC_CACHE_REVALIDATE,
   tags: ["clubs"],
 });

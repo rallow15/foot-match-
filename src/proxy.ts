@@ -88,12 +88,14 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Le proxy tourne sur toutes les routes HTML (pour le nonce), en ignorant les
-  // assets statiques, l'API et les prefetchs (pas de HTML à protéger). Les
-  // Server Actions (POST sur la route de la page) passent toujours par ici.
+  // Le proxy tourne sur les requêtes HTML pour poser la CSP. On exclut :
+  // - l'API, les assets statiques, les images
+  // - les prefetchs Next.js (header next-router-prefetch / purpose=prefetch)
+  // - les requêtes RSC internes (_next/data et flight)
+  // Les Server Actions (POST sur la route de la page) passent toujours par ici.
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      source: "/((?!api|_next/static|_next/image|_next/data|favicon.ico|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
