@@ -14,7 +14,14 @@ function buildDatabaseUrl(): string | undefined {
     const url = new URL(raw);
     const current = url.searchParams.get("connection_limit");
     if (!current) {
-      const limit = process.env.PRISMA_CONNECTION_LIMIT ?? "25";
+      // Supabase Pooler (session ou transactionnel) gère déjà le pooling côté
+      // Postgres. Prisma ne doit pas ouvrir son propre pool de N connexions,
+      // sinon on dépasse rapidement la limite de clients du pooler (15 en mode
+      // session, 200 en mode transactionnel). On force connection_limit=1.
+      const isSupabasePooler = url.hostname.endsWith(".pooler.supabase.com");
+      const limit = isSupabasePooler
+        ? "1"
+        : (process.env.PRISMA_CONNECTION_LIMIT ?? "25");
       url.searchParams.set("connection_limit", limit);
     }
     return url.toString();
