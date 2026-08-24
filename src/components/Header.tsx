@@ -30,10 +30,12 @@ interface HeaderProps {
 function MobileMenu({
   isOpen,
   club,
+  loading,
   onClose,
 }: {
   isOpen: boolean;
   club?: HeaderProps["club"];
+  loading: boolean;
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -56,13 +58,22 @@ function MobileMenu({
             Validation
           </MobileNavItem>
         )}
-        {club ? (
+        {loading ? (
+          <div className="px-3 py-3">
+            <span className="text-sm text-muted">Chargement…</span>
+          </div>
+        ) : club ? (
           <div className="mt-2 border-t border-line pt-2">
             <LogoutButton className="w-full" variant="accent" />
           </div>
         ) : (
           <>
-            <MobileNavItem href="/login" onClick={onClose}>Se connecter</MobileNavItem>
+            <MobileNavItem href="/login" onClick={onClose}>
+              Se connecter
+            </MobileNavItem>
+            <MobileNavItem href="/inscription" onClick={onClose}>
+              Inscrire mon club
+            </MobileNavItem>
           </>
         )}
       </nav>
@@ -128,19 +139,31 @@ function HamburgerButton({
   );
 }
 
+function HeaderSkeleton() {
+  return (
+    <div className="hidden items-center gap-3 md:flex">
+      <div className="h-9 w-24 animate-pulse rounded-sm bg-[#B9E6FE]" />
+      <div className="h-9 w-36 animate-pulse rounded-sm bg-[#B9E6FE]" />
+    </div>
+  );
+}
+
 export function Header({ club: initialClub }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [club, setClub] = useState<HeaderProps["club"]>(initialClub);
+  // undefined  => le layout statique ne sait pas : on affiche un état de
+  //              chargement en attendant /api/me.
+  // null       => connecté connu comme déconnecté (pas de fetch).
+  // club object=> connecté connu comme connecté (pas de fetch).
   const [loading, setLoading] = useState(initialClub === undefined);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
 
   useEffect(() => {
-    // Si le layout statique a fourni une prop club (null), on la prend comme
-    // valeur par defaut. On tente quand meme un fetch /api/me pour reactiver
-    // le header si l'utilisateur est connecte. Si le layout fournit undefined,
-    // c'est qu'il est statique et qu'il ne sait pas : on affiche "Se connecter"
-    // en attendant le fetch.
+    if (initialClub !== undefined) {
+      // Le layout a déjà résolu l'état (layout dynamique, ou valeur explicite).
+      return;
+    }
     let aborted = false;
     fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
       .then((res) => {
@@ -156,7 +179,7 @@ export function Header({ club: initialClub }: HeaderProps) {
       .catch((err) => {
         console.error("[Header] /api/me error", err);
         if (!aborted) {
-          // En cas d'erreur reseau, on considere l'utilisateur comme deconnecte
+          // En cas d'erreur réseau, on considère l'utilisateur comme déconnecté
           // pour ne pas bloquer la navigation.
           setClub(null);
           setLoading(false);
@@ -165,7 +188,7 @@ export function Header({ club: initialClub }: HeaderProps) {
     return () => {
       aborted = true;
     };
-  }, []);
+  }, [initialClub]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
@@ -210,9 +233,11 @@ export function Header({ club: initialClub }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {loading || club ? (
+          {loading ? (
+            <HeaderSkeleton />
+          ) : club ? (
             <>
-              {club && club.role === "club" && (
+              {club.role === "club" && (
                 <Link
                   href="/dashboard/profil"
                   className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
@@ -220,10 +245,10 @@ export function Header({ club: initialClub }: HeaderProps) {
                   {club.nom}
                 </Link>
               )}
-              {club && club.role === "admin" && (
+              {club.role === "admin" && (
                 <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
               )}
-              {club && <LogoutButton className="hidden md:inline" variant="accent" />}
+              <LogoutButton className="hidden md:inline" variant="accent" />
             </>
           ) : (
             <>
@@ -241,7 +266,7 @@ export function Header({ club: initialClub }: HeaderProps) {
       </div>
 
       <div id="mobile-menu">
-        <MobileMenu isOpen={menuOpen} club={club} onClose={() => setMenuOpen(false)} />
+        <MobileMenu isOpen={menuOpen} club={club} loading={loading} onClose={() => setMenuOpen(false)} />
       </div>
     </header>
   );

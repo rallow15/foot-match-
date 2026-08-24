@@ -66,7 +66,7 @@ export default function RootLayout({
               "linear-gradient(180deg, #0a1115 0%, #0d1418 100%)",
           }}
         />
-        <Header club={null} />
+        <Header />
         <main className="relative z-10 flex-1 fade-in">{children}</main>
         <Footer />
       </body>
