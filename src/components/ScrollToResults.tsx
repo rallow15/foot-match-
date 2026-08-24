@@ -8,9 +8,9 @@ export function ScrollToResults() {
     if (window.location.hash === "#annonces-results") {
       const el = document.getElementById("annonces-results");
       if (el) {
-        // Le header sticky fait ~64px. On place le haut du résultat pile
-      // sous le header avec un petit espace visuel.
-      const headerOffset = 84;
+        // Le header sticky fait 64px (h-16). On aligne le haut du résultat
+      // juste sous le header, sans marge supplémentaire.
+      const headerOffset = 64;
       const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
       window.scrollTo({ top, behavior: "auto" });
       }
