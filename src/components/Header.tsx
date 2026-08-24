@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 import { usePathname } from "next/navigation";
@@ -128,10 +128,43 @@ function HamburgerButton({
   );
 }
 
-export function Header({ club }: HeaderProps) {
+export function Header({ club: initialClub }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [club, setClub] = useState<HeaderProps["club"]>(initialClub);
+  const [loading, setLoading] = useState(initialClub === undefined);
   const pathname = usePathname();
   const isAdmin = club?.role === "admin";
+
+  useEffect(() => {
+    // Si le layout statique a fourni une prop club (null), on la prend comme
+    // valeur par defaut. On tente quand meme un fetch /api/me pour reactiver
+    // le header si l'utilisateur est connecte. Si le layout fournit undefined,
+    // c'est qu'il est statique et qu'il ne sait pas : on affiche "Se connecter"
+    // en attendant le fetch.
+    let aborted = false;
+    fetch("/api/me", { credentials: "same-origin" })
+      .then((res) => {
+        if (!res.ok) throw new Error("me failed");
+        return res.json();
+      })
+      .then((data: { club: HeaderProps["club"] }) => {
+        if (!aborted) {
+          setClub(data.club);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!aborted) {
+          // En cas d'erreur reseau, on considere l'utilisateur comme deconnecte
+          // pour ne pas bloquer la navigation.
+          setClub(null);
+          setLoading(false);
+        }
+      });
+    return () => {
+      aborted = true;
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
@@ -176,19 +209,20 @@ export function Header({ club }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {club ? (
+          {loading || club ? (
             <>
-              {club.role === "club" ? (
+              {club && club.role === "club" && (
                 <Link
                   href="/dashboard/profil"
                   className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
                 >
                   {club.nom}
                 </Link>
-              ) : (
+              )}
+              {club && club.role === "admin" && (
                 <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
               )}
-              <LogoutButton className="hidden md:inline" variant="accent" />
+              {club && <LogoutButton className="hidden md:inline" variant="accent" />}
             </>
           ) : (
             <>
