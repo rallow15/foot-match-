@@ -5,6 +5,7 @@ import { haversineKm } from "@/lib/geo";
 import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
 import { SearchFilters } from "@/components/SearchFilters";
+import { Pagination } from "@/components/Pagination";
 
 export const metadata = {
   title: "Rechercher un match — Matchs Amicaux",
@@ -12,9 +13,20 @@ export const metadata = {
     "Trouvez une annonce de match amical entre clubs amateurs de football. Filtrez par catégorie, date, ligue, district et distance.",
 };
 
-// La page reste dynamique à cause des searchParams, mais les requêtes DB
-// sont mises en cache par `searchAnnonces` (unstable_cache).
 export const revalidate = 60;
+
+const SEARCH_FIELDS = [
+  "categorie",
+  "niveau",
+  "dateFrom",
+  "dateTo",
+  "dom",
+  "stade",
+  "arbitre",
+  "ligue",
+  "district",
+  "ville",
+];
 
 export default async function AnnoncesSearchPage({
   searchParams,
@@ -41,9 +53,19 @@ export default async function AnnoncesSearchPage({
     longitude: get("longitude"),
     rayon: get("rayon"),
     excludeClubId: currentClub?.id,
+    page: get("page"),
   };
 
-  const annonces = await searchAnnonces(params);
+  const hasSearch = SEARCH_FIELDS.some((k) => Boolean(params[k as keyof typeof params]));
+
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const limit = 5;
+
+  const { annonces, total } = hasSearch
+    ? await searchAnnonces(params)
+    : { annonces: [], total: 0 };
+
+  const totalPages = Math.ceil(total / limit);
 
   const lat = parseFloat(params.latitude ?? "");
   const lng = parseFloat(params.longitude ?? "");
@@ -63,15 +85,31 @@ export default async function AnnoncesSearchPage({
         <SearchFilters initial={params} />
       </Suspense>
 
-      {/* RÉSULTATS */}
       <div id="annonces-results" className="mt-10 flex items-baseline justify-between">
         <p className="text-sm text-muted">
-          <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
-          {annonces.length > 1 ? "annonces ouvertes" : "annonce ouverte"}
+          {hasSearch ? (
+            <>
+              <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
+              {annonces.length > 1 ? "annonces trouvées" : "annonce trouvée"}
+              {total > limit && (
+                <span className="text-muted-2"> · {total} au total</span>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-2">Remplissez les critères ci-dessus pour lancer une recherche.</span>
+          )}
         </p>
       </div>
 
-      {annonces.length === 0 ? (
+      {!hasSearch ? (
+        <div className="card mt-6 p-12 text-center">
+          <p className="headline text-2xl text-paper">Lancez votre recherche</p>
+          <p className="mt-2 text-muted">
+            Sélectionnez au moins un critère (catégorie, ligue, district, ville, date…) puis cliquez sur{" "}
+            <span className="text-accent">Rechercher</span>.
+          </p>
+        </div>
+      ) : annonces.length === 0 ? (
         <div className="card mt-6 p-12 text-center">
           <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
           <p className="mt-2 text-muted">
@@ -83,15 +121,36 @@ export default async function AnnoncesSearchPage({
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
-          {annonces.map((a) => (
-            <AnnonceCard
-              key={a.id}
-              annonce={a}
-              distanceKm={hasGeo ? haversineKm(lat, lng, a.club.latitude, a.club.longitude) : null}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+            {annonces.map((a) => (
+              <AnnonceCard
+                key={a.id}
+                annonce={a}
+                distanceKm={hasGeo ? haversineKm(lat, lng, a.club.latitude, a.club.longitude) : null}
+              />
+            ))}
+          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            filters={{
+              categorie: params.categorie,
+              niveau: params.niveau,
+              dateFrom: params.dateFrom,
+              dateTo: params.dateTo,
+              dom: params.dom,
+              stade: params.stade,
+              arbitre: params.arbitre,
+              ligue: params.ligue,
+              district: params.district,
+              ville: params.ville,
+              latitude: params.latitude,
+              longitude: params.longitude,
+              rayon: params.rayon,
+            }}
+          />
+        </>
       )}
     </div>
   );

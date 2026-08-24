@@ -18,9 +18,15 @@ export interface SearchParams {
   longitude?: string;
   rayon?: string; // km
   excludeClubId?: string; // exclut les annonces publiées par ce club (ex: club connecté)
+  page?: string;
 }
 
 export type AnnonceWithRelations = Awaited<ReturnType<typeof fetchAnnonceById>>;
+
+export interface SearchResult {
+  annonces: AnnonceWithRelations[];
+  total: number;
+}
 
 const PUBLIC_CLUB_SELECT = {
   id: true,
@@ -53,7 +59,9 @@ export const fetchAnnonceByIdCached = unstable_cache(fetchAnnonceById, ["annonce
 const DEFAULT_PAGE_LIMIT = 48;
 const DEFAULT_DASHBOARD_LIMIT = 100;
 
-async function _searchAnnoncesImpl(params: SearchParams, limit = DEFAULT_PAGE_LIMIT) {
+const SEARCH_PAGE_LIMIT = 5;
+
+async function _searchAnnoncesImpl(params: SearchParams) {
   const where: Record<string, unknown> = {
     statut: "ouvert",
     // auto-expiration : on ne montre que les dates à venir (cf. risque "annonces fantômes")
@@ -101,12 +109,19 @@ async function _searchAnnoncesImpl(params: SearchParams, limit = DEFAULT_PAGE_LI
   if (params.arbitre === "1") where.arbitreDispo = true;
   if (params.excludeClubId) where.clubId = { not: params.excludeClubId };
 
-  const rows = await prisma.annonce.findMany({
-    where,
-    include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
-    orderBy: { date: "asc" },
-    take: limit,
-  });
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const skip = (page - 1) * SEARCH_PAGE_LIMIT;
+
+  const [total, rows] = await Promise.all([
+    prisma.annonce.count({ where }),
+    prisma.annonce.findMany({
+      where,
+      include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
+      orderBy: { date: "asc" },
+      skip,
+      take: SEARCH_PAGE_LIMIT,
+    }),
+  ]);
 
   // Filtrage géographique (rayon) — calculé en TS après fetch sur le sous-ensemble bounding-box.
   let filtered = rows;
@@ -118,11 +133,11 @@ async function _searchAnnoncesImpl(params: SearchParams, limit = DEFAULT_PAGE_LI
 
   // Tri final par date la plus proche
   filtered.sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
-  return filtered;
+  return { annonces: filtered, total };
 }
 
 export const searchAnnonces = unstable_cache(
-  (params: SearchParams) => _searchAnnoncesImpl(params, DEFAULT_PAGE_LIMIT),
+  (params: SearchParams) => _searchAnnoncesImpl(params),
   ["search-annonces"],
   {
     revalidate: 60,

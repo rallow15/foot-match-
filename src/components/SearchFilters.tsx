@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { CATEGORIES, niveauxForCategorie } from "@/lib/referential";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
@@ -30,19 +30,6 @@ export function SearchFilters({ initial }: { initial: FilterInitial }) {
   const [ligue, setLigue] = useState(initial.ligue ?? "");
   const [district, setDistrict] = useState(initial.district ?? "");
   const districts = ligue ? districtsForLigue(ligue) : [];
-
-  // Scroll automatique vers les résultats lorsqu’une recherche est active
-  // (la page recharge avec des filtres après un clic sur "Rechercher").
-  useEffect(() => {
-    const hasActiveFilters = Object.values(initial).some(
-      (v) => v !== undefined && v !== null && String(v).trim().length > 0,
-    );
-    if (!hasActiveFilters) return;
-    const el = document.getElementById("annonces-results");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [initial]);
 
   return (
     <form method="get" action="/annonces" className="card mt-8 grid gap-5 p-5 md:grid-cols-2 lg:grid-cols-3">
