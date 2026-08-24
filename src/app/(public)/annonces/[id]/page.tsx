@@ -32,7 +32,7 @@ export default async function AnnonceDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <Link href="/" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
+      <Link href="/annonces" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         {/* Détail */}
