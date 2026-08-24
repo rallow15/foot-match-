@@ -1,23 +1,23 @@
-# Load Test Report - 2026-08-21T14:06:18.818Z
+# Load Test Report - 2026-08-24T00:58:52.499Z
 
 ## Overall
 
 | Metric | Value |
 | --- | --- |
-| Total requests | 4732 |
+| Total requests | 16127 |
 | Failed requests | 0 (0.00%) |
-| RPS (avg) | 9.91 |
-| p50 duration | 227 ms |
-| p95 duration | 10582 ms |
-| p99 duration | 11120 ms |
-| Avg duration | 4041 ms |
-| Max duration | 11315 ms |
+| RPS (avg) | 35.11 |
+| p50 duration | 153 ms |
+| p95 duration | 350 ms |
+| p99 duration | 1672 ms |
+| Avg duration | 221 ms |
+| Max duration | 3173 ms |
 
 ## Slowest endpoints (by p95)
 
 | Endpoint | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Max (ms) |
 | --- | --- | --- | --- | --- | --- |
-| loadtest_endpoint_duration | 4130 | 228 | 10585 | 11121 | 11315 |
+| loadtest_endpoint_duration | 221 | 153 | 350 | 1672 | 3173 |
 
 ## Thresholds
 
