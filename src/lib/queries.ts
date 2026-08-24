@@ -17,6 +17,7 @@ export interface SearchParams {
   latitude?: string;
   longitude?: string;
   rayon?: string; // km
+  excludeClubId?: string; // exclut les annonces publiées par ce club (ex: club connecté)
 }
 
 export type AnnonceWithRelations = Awaited<ReturnType<typeof fetchAnnonceById>>;
@@ -98,6 +99,7 @@ async function _searchAnnoncesImpl(params: SearchParams, limit = DEFAULT_PAGE_LI
   }
   if (params.stade === "1") where.stadeDispo = true;
   if (params.arbitre === "1") where.arbitreDispo = true;
+  if (params.excludeClubId) where.clubId = { not: params.excludeClubId };
 
   const rows = await prisma.annonce.findMany({
     where,

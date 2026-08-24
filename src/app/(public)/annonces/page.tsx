@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { searchAnnonces } from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
+import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
 import { SearchFilters } from "@/components/SearchFilters";
 
@@ -23,6 +24,8 @@ export default async function AnnoncesSearchPage({
   const sp = await searchParams;
   const get = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
 
+  const currentClub = await getCurrentClub();
+
   const params = {
     categorie: get("categorie"),
     dateFrom: get("dateFrom"),
@@ -37,6 +40,7 @@ export default async function AnnoncesSearchPage({
     latitude: get("latitude"),
     longitude: get("longitude"),
     rayon: get("rayon"),
+    excludeClubId: currentClub?.id,
   };
 
   const annonces = await searchAnnonces(params);
