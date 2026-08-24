@@ -8,7 +8,10 @@ export function ScrollToResults() {
     if (window.location.hash === "#annonces-results") {
       const el = document.getElementById("annonces-results");
       if (el) {
-        el.scrollIntoView({ behavior: "auto", block: "start" });
+        // On laisse une petite marge sous le header sticky (h-16 = 64px + gap)
+      const headerOffset = 80;
+      const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top, behavior: "auto" });
       }
     }
   }, []);
