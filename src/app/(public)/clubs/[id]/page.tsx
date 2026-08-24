@@ -8,6 +8,8 @@ import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Bad
 
 export const revalidate = 60;
 
+// Le header fournit déjà la navigation ; pas de lien retour inutile ici.
+
 export default async function ClubProfilePage({
   params,
 }: {
@@ -25,10 +27,8 @@ export default async function ClubProfilePage({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <Link href="/" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
-
       {/* En-tête profil */}
-      <section className="card mt-4 overflow-hidden">
+      <section className="card overflow-hidden">
         <div className="flex flex-col gap-5 bg-gradient-to-br from-ink-3 to-ink-2 p-6 sm:flex-row sm:items-center">
           <ClubAvatar club={{ nom: club.nom, logoUrl: club.logoUrl }} size={96} />
           <div className="min-w-0">

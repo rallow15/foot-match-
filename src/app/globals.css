@@ -39,7 +39,10 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Pas de scroll-behavior: smooth global : il provoque des animations de scroll
+     indésirables lors des navigations entre pages (Next.js scroll en haut) et
+     des soumissions de formulaire. Le smooth scroll reste disponible via
+     scrollIntoView({ behavior: 'smooth' }) là où on le souhaite explicitement. */
 }
 
 body {

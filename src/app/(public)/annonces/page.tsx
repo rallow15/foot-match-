@@ -6,6 +6,7 @@ import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
 import { SearchFilters } from "@/components/SearchFilters";
 import { Pagination } from "@/components/Pagination";
+import { ScrollToResults } from "@/components/ScrollToResults";
 
 export const metadata = {
   title: "Rechercher un match — Matchs Amicaux",
@@ -84,6 +85,8 @@ export default async function AnnoncesSearchPage({
       <Suspense fallback={<div className="mt-6 h-32 animate-pulse rounded bg-ink-3" />}>
         <SearchFilters initial={params} />
       </Suspense>
+
+      <ScrollToResults />
 
       <div id="annonces-results" className="mt-10 flex items-baseline justify-between">
         <p className="text-sm text-muted">
