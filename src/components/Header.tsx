@@ -142,18 +142,21 @@ export function Header({ club: initialClub }: HeaderProps) {
     // c'est qu'il est statique et qu'il ne sait pas : on affiche "Se connecter"
     // en attendant le fetch.
     let aborted = false;
-    fetch("/api/me", { credentials: "same-origin" })
+    fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
       .then((res) => {
-        if (!res.ok) throw new Error("me failed");
+        console.log("[Header] /api/me status", res.status);
+        if (!res.ok) throw new Error("me failed: " + res.status);
         return res.json();
       })
-      .then((data: { club: HeaderProps["club"] }) => {
+      .then((data: { club: HeaderProps["club"]; debug?: string }) => {
+        console.log("[Header] /api/me data", data);
         if (!aborted) {
           setClub(data.club);
           setLoading(false);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[Header] /api/me error", err);
         if (!aborted) {
           // En cas d'erreur reseau, on considere l'utilisateur comme deconnecte
           // pour ne pas bloquer la navigation.
