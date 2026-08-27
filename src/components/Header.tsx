@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 import { usePathname } from "next/navigation";
@@ -19,12 +19,46 @@ const NAV_LINKS: NavLink[] = [
   { href: "/ajouter-ecran-accueil", label: "Installer l’app" },
 ];
 
+interface ClubInfo {
+  id: string;
+  nom: string;
+  role: "club" | "admin";
+}
+
 interface HeaderProps {
-  club?: {
-    id: string;
-    nom: string;
-    role: "club" | "admin";
-  } | null;
+  // undefined  = l'état n'est pas encore connu, le header le chargera côté client
+  // null       = l'utilisateur est déconnecté
+  // { ... }    = l'utilisateur est connecté (fourni par les pages privées)
+  club?: ClubInfo | null;
+}
+
+function useClubFromApi(initialClub: ClubInfo | null | undefined) {
+  const [club, setClub] = useState<ClubInfo | null | undefined>(initialClub);
+
+  useEffect(() => {
+    // Si le layout fournit déjà une valeur (pages privées), on ne refait pas l'appel.
+    if (initialClub !== undefined) return;
+
+    let cancelled = false;
+
+    fetch("/api/me", { credentials: "same-origin" })
+      .then((res) => {
+        if (!res.ok) throw new Error("me fetch failed");
+        return res.json();
+      })
+      .then((data: { club: ClubInfo | null }) => {
+        if (!cancelled) setClub(data.club ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setClub(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialClub]);
+
+  return club;
 }
 
 function MobileMenu({
@@ -133,81 +167,120 @@ function HamburgerButton({
   );
 }
 
-export function Header({ club }: HeaderProps) {
+function HeaderSkeleton() {
+  return (
+    <>
+      <nav className="hidden items-center gap-7 text-sm font-medium text-ink md:flex">
+        {NAV_LINKS.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            prefetch
+            className="transition-colors hover:text-ink-2"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden h-8 w-24 animate-pulse rounded bg-line md:inline" />
+        <div className="h-9 w-28 animate-pulse rounded bg-accent/30" />
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-sm md:hidden">
+          <div className="flex h-5 w-6 flex-col justify-between">
+            <span className="block h-0.5 rounded-full bg-ink/50" />
+            <span className="block h-0.5 rounded-full bg-ink/50" />
+            <span className="block h-0.5 rounded-full bg-ink/50" />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function Header({ club: initialClub }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const club = useClubFromApi(initialClub);
   const isAdmin = club?.role === "admin";
+  const isLoading = club === undefined;
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[#E0F2FE]/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-ink md:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              prefetch
-              className={`transition-colors hover:text-ink-2 ${
-                pathname === link.href ? "text-ink-2" : ""
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {club && club.role === "club" && (
-            <Link
-              href="/dashboard"
-              prefetch
-              className={`transition-colors hover:text-ink-2 ${
-                pathname?.startsWith("/dashboard") ? "text-ink-2" : ""
-              }`}
-            >
-              Mon espace
-            </Link>
-          )}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              prefetch
-              className={`transition-colors hover:text-ink-2 ${
-                pathname?.startsWith("/admin") ? "text-ink-2" : ""
-              }`}
-            >
-              Validation
-            </Link>
-          )}
-        </nav>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          {club ? (
-            <>
-              {club.role === "club" ? (
+        {isLoading ? (
+          <HeaderSkeleton />
+        ) : (
+          <>
+            <nav className="hidden items-center gap-7 text-sm font-medium text-ink md:flex">
+              {NAV_LINKS.map((link) => (
                 <Link
-                  href="/dashboard/profil"
-                  className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
+                  key={link.href}
+                  href={link.href}
+                  prefetch
+                  className={`transition-colors hover:text-ink-2 ${
+                    pathname === link.href ? "text-ink-2" : ""
+                  }`}
                 >
-                  {club.nom}
+                  {link.label}
                 </Link>
-              ) : (
-                <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
+              ))}
+              {club && club.role === "club" && (
+                <Link
+                  href="/dashboard"
+                  prefetch
+                  className={`transition-colors hover:text-ink-2 ${
+                    pathname?.startsWith("/dashboard") ? "text-ink-2" : ""
+                  }`}
+                >
+                  Mon espace
+                </Link>
               )}
-              <LogoutButton className="hidden md:inline" variant="accent" />
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="btn-ghost-light hidden text-sm md:inline">
-                Se connecter
-              </Link>
-              <Link href="/inscription" className="btn-accent text-sm">
-                Inscrire mon club
-              </Link>
-            </>
-          )}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  prefetch
+                  className={`transition-colors hover:text-ink-2 ${
+                    pathname?.startsWith("/admin") ? "text-ink-2" : ""
+                  }`}
+                >
+                  Validation
+                </Link>
+              )}
+            </nav>
 
-          <HamburgerButton isOpen={menuOpen} onClick={() => setMenuOpen((v) => !v)} />
-        </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {club ? (
+                <>
+                  {club.role === "club" ? (
+                    <Link
+                      href="/dashboard/profil"
+                      className="hidden text-sm text-ink hover:text-ink-2 sm:inline"
+                    >
+                      {club.nom}
+                    </Link>
+                  ) : (
+                    <span className="hidden text-sm text-ink sm:inline">{club.nom}</span>
+                  )}
+                  <LogoutButton className="hidden md:inline" variant="accent" />
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="btn-ghost-light hidden text-sm md:inline">
+                    Se connecter
+                  </Link>
+                  <Link href="/inscription" className="btn-accent text-sm">
+                    Inscrire mon club
+                  </Link>
+                </>
+              )}
+
+              <HamburgerButton isOpen={menuOpen} onClick={() => setMenuOpen((v) => !v)} />
+            </div>
+          </>
+        )}
       </div>
 
       <div id="mobile-menu">
