@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.APP_URL ?? "https://www.monmatchamical.fr";
+// Domaine principal du site. On force ici le domaine personnalise car
+// Vercel peut injecter APP_URL avec l'URL de deployment par defaut
+// (ex. foot-match-xxx.vercel.app) ce qui invalide le sitemap dans
+// Google Search Console.
+const BASE_URL = "https://www.monmatchamical.fr";
 
+export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "/",
     "/annonces",
@@ -15,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   return staticRoutes.map((route) => ({
-    url: `${baseUrl}${route}`,
+    url: `${BASE_URL}${route}`,
     lastModified: new Date(),
     changeFrequency: route === "/" ? "daily" : "weekly",
     priority: route === "/" ? 1 : 0.8,
