@@ -17,9 +17,9 @@ import {
   revokeAllSessions,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail } from "@/lib/mail";
+import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail, sendPublicContactEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, PUBLIC_CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -678,6 +678,39 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
   // demande effective (cf. PRD). Elles proviennent du serveur, jamais du client
   // — évite la fuite via les props du composant avant contact.
   return { ok: true, tel: annonce.club.telephone, email: annonce.club.email };
+}
+
+/* ---------------- Formulaire de contact public ---------------- */
+
+export async function sendPublicContactAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  // Rate limiting strict : formulaire public, non authentifié.
+  const ip = await getClientIp();
+  if (!(await rateLimit(ip, "public-contact", PUBLIC_CONTACT_RATE_LIMIT))) {
+    return { error: "Trop de messages envoyés. Réessayez plus tard." };
+  }
+
+  const nom = String(formData.get("nom") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const sujet = String(formData.get("sujet") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (!nom || !email || !sujet || !message) {
+    return { error: "Tous les champs sont obligatoires." };
+  }
+
+  const nomCheck = validateLength(nom, "Nom", LIMITS.NOM_MAX);
+  if (!nomCheck.valid) return { error: nomCheck.error! };
+  const sujetCheck = validateLength(sujet, "Sujet", LIMITS.NOM_MAX);
+  if (!sujetCheck.valid) return { error: sujetCheck.error! };
+  const messageCheck = validateLength(message, "Message", LIMITS.MESSAGE_MAX);
+  if (!messageCheck.valid) return { error: messageCheck.error! };
+  if (!isValidEmail(email)) return { error: "Email invalide." };
+
+  // Relai email vers l'administrateur / support (fire-and-forget : un souci SMTP
+  // ne doit pas afficher une erreur technique au visiteur).
+  await sendPublicContactEmail({ nom, email, sujet, message }).catch(() => {});
+
+  return { ok: true };
 }
 
 /* ---------------- Admin (vérification licences) ---------------- */

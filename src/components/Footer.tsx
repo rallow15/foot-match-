@@ -20,6 +20,7 @@ export function Footer() {
             <li><Link href="/inscription" className="hover:text-ink-2 transition-colors">Inscription</Link></li>
             <li><Link href="/comment-ca-marche" className="hover:text-ink-2 transition-colors">Comment ça marche</Link></li>
             <li><Link href="/ajouter-ecran-accueil" className="hover:text-ink-2 transition-colors">Installer l’app</Link></li>
+            <li><Link href="/contact" className="hover:text-ink-2 transition-colors">Contact</Link></li>
           </ul>
         </div>
         <div>

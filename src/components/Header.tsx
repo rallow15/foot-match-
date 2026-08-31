@@ -17,6 +17,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/matchs-confirmees", label: "Matchs confirmés" },
   { href: "/comment-ca-marche", label: "Comment ça marche" },
   { href: "/ajouter-ecran-accueil", label: "Installer l’app" },
+  { href: "/contact", label: "Contact" },
 ];
 
 interface ClubInfo {

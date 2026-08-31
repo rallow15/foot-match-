@@ -13,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/matchs-confirmees",
     "/comment-ca-marche",
     "/ajouter-ecran-accueil",
+    "/contact",
     "/login",
     "/inscription",
     "/mot-de-passe-oublie",

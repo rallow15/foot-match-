@@ -243,3 +243,40 @@ l'espace admin : ${appUrl}/admin
   }
   await t.sendMail({ from, to, subject, text });
 }
+
+export interface PublicContactMailData {
+  nom: string; // nom du visiteur
+  email: string; // email de réponse
+  sujet: string;
+  message: string;
+  source?: string; // page ou contexte d'origine (optionnel)
+}
+
+// Email "formulaire de contact public" : relaie un message générique envoyé par
+// un visiteur (connecté ou non) vers l'adresse de contact de la plateforme.
+// L'adresse destinataire est configurable via CONTACT_EMAIL (défaut :
+// matchamicalamateur@gmail.com).
+export async function sendPublicContactEmail(data: PublicContactMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const to = process.env.CONTACT_EMAIL ?? "matchamicalamateur@gmail.com";
+  const subject = `Contact — ${data.sujet}`;
+  const sourceBlock = data.source ? `\nPage source : ${data.source}\n` : "";
+  const text = `Bonjour,
+
+Nouveau message via le formulaire de contact de Matchs Amicaux.
+
+De : ${data.nom} <${data.email}>
+Sujet : ${data.sujet}
+
+Message :
+${data.message}
+${sourceBlock}—
+Répondre directement à : ${data.email}`;
+
+  const t = transporter();
+  if (!t) {
+    fallbackLog("CONTACT PUBLIC");
+    return;
+  }
+  await t.sendMail({ from, to, subject, text, replyTo: data.email });
+}
