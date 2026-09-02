@@ -25,8 +25,12 @@ model Club {
   licenceFichierUrl    String?
   statutVerification   String     @default("en_attente")
   refusMotif           String?
-  passwordHash         String
+  passwordHash         String?
   role                 String     @default("club")
+  oauthProvider        String?
+  oauthProviderId      String?
+  oauthName            String?
+  oauthPicture         String?
   failedLoginAttempts  Int        @default(0)
   lockedUntil          DateTime?
   derniereActiviteAt   DateTime   @default(now())
@@ -39,6 +43,7 @@ model Club {
 
   @@index([statutVerification])
   @@index([email])
+  @@unique([oauthProvider, oauthProviderId])
 }
 
 model Equipe {

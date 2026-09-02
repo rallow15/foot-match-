@@ -24,14 +24,28 @@ export interface GeoResult {
   longitude: number;
 }
 
+const GEO_TIMEOUT_MS = 5000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    clearTimeout(timeout);
+    return res;
+  } catch {
+    return null;
+  }
+}
+
 // Géocode une ville/code postal via l'API adresse (BAN). Côté serveur.
 export async function geocode(q: string): Promise<GeoResult | null> {
   const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(
     q,
   )}&type=municipality&limit=1`;
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
+    const res = await fetchWithTimeout(url, { cache: "no-store" });
+    if (!res || !res.ok) return null;
     const data = (await res.json()) as {
       features?: Array<{
         properties: { label: string; name: string; postcode: string };
@@ -52,15 +66,15 @@ export async function geocode(q: string): Promise<GeoResult | null> {
   }
 }
 
-// Autocomplete de villes pour les inputs (appelé côté client depuis la barre de filtre).
+// Autocomplete de villes pour les inputs (appelé côté serveur via /api/geo/autocomplete).
 export async function autocompleteVilles(q: string): Promise<GeoResult[]> {
   if (q.trim().length < 3) return [];
   const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(
     q,
   )}&type=municipality&limit=6`;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
+    const res = await fetchWithTimeout(url);
+    if (!res || !res.ok) return [];
     const data = (await res.json()) as {
       features?: Array<{
         properties: { label: string; name: string; postcode: string };

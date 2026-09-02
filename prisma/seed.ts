@@ -49,6 +49,7 @@ async function main() {
   await prisma.club.deleteMany();
 
   const clubPassword = await bcrypt.hash("club1234", 10);
+  // oauthProvider/Id laissés null pour les comptes démo (auth par email/mdp).
 
   // Mot de passe admin : en production, ADMIN_PASSWORD est obligatoire (échec
   // explicite du seed sinon). En dev, s'il est absent on en génère un aléatoire

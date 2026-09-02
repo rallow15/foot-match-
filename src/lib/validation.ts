@@ -76,8 +76,11 @@ export function isValidTelephone(value: string): boolean {
 }
 
 // --- Email ---
+// Regex stricte rejetant les caractères de contrôle, exigeant au moins un
+// caractère avant/after @ et un TLD d'au moins 2 lettres.
 export function isValidEmail(value: string): boolean {
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) && value.length <= LIMITS.EMAIL_MAX;
+  if (value.length > LIMITS.EMAIL_MAX) return false;
+  return /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(value);
 }
 
 // --- Mot de passe ---

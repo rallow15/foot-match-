@@ -6,16 +6,17 @@ import { prisma } from "./db";
 import { cleanupExpiredSessions } from "./session-cleanup";
 
 export const SESSION_COOKIE = "foot_session";
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 14;
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, 12);
 }
 
 export async function verifyPassword(
   password: string,
-  hash: string,
+  hash: string | null | undefined,
 ): Promise<boolean> {
+  if (!hash) return false;
   return bcrypt.compare(password, hash);
 }
 

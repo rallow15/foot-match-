@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { autocompleteVilles, type GeoResult } from "@/lib/geo";
+import { type GeoResult } from "@/lib/geo";
 
 interface Props {
   initialVille?: string;
@@ -40,7 +40,8 @@ export function VilleAutocomplete({
         setResults([]);
         return;
       }
-      const r = await autocompleteVilles(q);
+      const res = await fetch(`/api/geo/autocomplete?q=${encodeURIComponent(q)}`);
+      const r = res.ok ? ((await res.json()) as { results: GeoResult[] }).results : [];
       if (active) {
         setResults(r);
         setOpen(true);

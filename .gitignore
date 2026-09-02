@@ -60,6 +60,9 @@ next-env.d.ts
 /claude-plans
 *.claude.md.bak
 
+# local debloat tooling workspace
+/tv-debloat/
+
 # python cache
 __pycache__/
 *.pyc

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, type ActionState } from "@/app/actions";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 export function LoginForm({ redirect }: { redirect?: string }) {
   const [state, formAction, pending] = useActionState(loginAction, undefined as ActionState);
@@ -40,6 +41,14 @@ export function LoginForm({ redirect }: { redirect?: string }) {
       <button type="submit" disabled={pending} className="btn-accent mt-6 w-full">
         {pending ? "Connexion…" : "Se connecter"}
       </button>
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-xs text-muted">ou</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+      <GoogleSignInButton mode="login" redirect={redirect} />
 
       <p className="mt-5 text-center text-sm text-muted">
         Pas encore de compte ?{" "}

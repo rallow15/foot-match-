@@ -2,7 +2,6 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import {
   createSession,
@@ -19,7 +18,9 @@ import {
 import { geocode } from "@/lib/geo";
 import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail, sendPublicContactEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
-import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, PUBLIC_CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, LOGIN_EMAIL_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, PUBLIC_CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
+import { getClientIpAsync } from "@/lib/ip";
+import { consumePendingOAuthProfile } from "@/lib/oauth-state";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -52,33 +53,8 @@ export type ActionState = {
 
 /* --- Helpers --- */
 
-// IP client pour le rate limiting.
-// Sur Vercel, `x-vercel-forwarded-for` est l'IP réelle du client, non falsifiable
-// par le requérant : on la privilégie sans condition.
-// Hors Vercel (auto-hébergement derrière un reverse-proxy type Caddy/Nginx), les
-// en-têtes `x-forwarded-for` / `x-real-ip` sont FALSIFIABLES par le client tant
-// qu'aucun proxy de confiance ne les réécrit. On ne les fait donc confiance que
-// si le déploiement l'exprime via TRUST_PROXY_HEADERS=1 (cf. .env.example).
-// Sans cela, on renvoie "unknown" : le rate-limiting devient par hypothèse
-// conservateur (toutes les requêtes partagent le même seau) plutôt que spoofable.
-// ATTENTION : en production non-Vercel, ce comportement regroupe tous les visiteurs
-// dans le même seau et un attaquant peut bloquer les actions pour tout le monde.
-// Déployer impérativement derrière un reverse proxy de confiance avec
-// TRUST_PROXY_HEADERS=1, ou utiliser Vercel qui fournit x-vercel-forwarded-for.
 async function getClientIp(): Promise<string> {
-  const h = await headers();
-  const vercel = h.get("x-vercel-forwarded-for");
-  if (vercel) return vercel.split(",")[0].trim();
-  if (process.env.TRUST_PROXY_HEADERS === "1") {
-    const xff = h.get("x-forwarded-for");
-    if (xff) {
-      const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
-      if (parts.length) return parts[parts.length - 1];
-    }
-    const real = h.get("x-real-ip");
-    if (real) return real.trim();
-  }
-  return "unknown";
+  return getClientIpAsync();
 }
 
 /* ---------------- Auth ---------------- */
@@ -204,8 +180,9 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
       telephone,
     }).catch(() => {});
   } catch (e) {
+    // Message constant : ne pas révéler l'existence d'un compte (anti-énumération).
     if ((e as { code?: string }).code === "P2002")
-      return { error: "Un compte existe déjà avec cet email." };
+      return { error: "L'inscription n'a pas pu être finalisée." };
     return { error: "Erreur lors de la création du compte." };
   }
 
@@ -223,6 +200,12 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Email et mot de passe requis." };
+
+  // Rate-limit par identifiant saisi (même si l'email n'existe pas) pour
+  // compliquer les attaques distribuées ciblant un compte.
+  if (!(await rateLimitByAccount(email, "login-email", LOGIN_EMAIL_RATE_LIMIT))) {
+    return { error: "Trop de tentatives. Réessayez dans un instant." };
+  }
 
   // Prévention DoS bcrypt : refuser les mots de passe trop longs sans révéler la raison
   if (password.length > LIMITS.PASSWORD_MAX) {
@@ -926,4 +909,102 @@ export async function updateLogoAction(_prev: ActionState, formData: FormData): 
   revalidatePath(`/clubs/${club.id}`);
   revalidatePath("/");
   return { ok: true };
+}
+
+/* ---------------- OAuth — complétion d'inscription ---------------- */
+
+export async function completeOAuthRegisterAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const ip = await getClientIp();
+  if (!(await rateLimit(ip, "oauth-register", REGISTER_RATE_LIMIT))) {
+    return { error: "Trop de tentatives. Réessayez dans un instant." };
+  }
+
+  const pending = await consumePendingOAuthProfile();
+  if (!pending) {
+    return { error: "Session d'inscription expirée. Veuillez recommencer." };
+  }
+
+  const nom = String(formData.get("nom") ?? "").trim();
+  const ville = String(formData.get("ville") ?? "").trim();
+  const codePostal = String(formData.get("codePostal") ?? "").trim();
+  const ligue = String(formData.get("ligue") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim();
+  const telephone = String(formData.get("telephone") ?? "").trim();
+  const licence = formData.get("licence") as File | null;
+
+  if (!nom || !ville || !codePostal || !telephone || !ligue || !district) {
+    return { error: "Tous les champs marqués d'un * sont obligatoires." };
+  }
+
+  const nomCheck = validateLength(nom, "Nom", LIMITS.NOM_MAX);
+  if (!nomCheck.valid) return { error: nomCheck.error! };
+  const villeCheck = validateLength(ville, "Ville", LIMITS.VILLE_MAX);
+  if (!villeCheck.valid) return { error: villeCheck.error! };
+  const telCheck = validateLength(telephone, "Téléphone", LIMITS.TELEPHONE_MAX);
+  if (!telCheck.valid) return { error: telCheck.error! };
+
+  if (!isValidLigue(ligue)) return { error: "Ligue obligatoire." };
+  if (!isValidDistrict(ligue, district)) return { error: "District invalide pour cette ligue." };
+  if (!isValidCodePostal(codePostal)) return { error: "Code postal invalide (5 chiffres requis)." };
+  if (!isValidTelephone(telephone)) return { error: "Numéro de téléphone invalide." };
+
+  const existing = await prisma.club.findUnique({
+    where: { email: pending.email },
+    select: { id: true },
+  });
+  if (existing) {
+    return { error: "L'inscription n'a pas pu être finalisée." };
+  }
+
+  const geo = (await geocode(`${ville} ${codePostal}`)) ?? (await geocode(ville));
+  if (!geo) return { error: "Ville introuvable. Vérifiez le nom et le code postal." };
+  const codePostalFinal = isValidCodePostal(codePostal) ? codePostal : geo.codePostal;
+
+  let licenceUrl: string | null = null;
+  try {
+    licenceUrl = await saveUpload(licence, "licence");
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  if (!licenceUrl) return { error: "La licence de dirigeant/éducateur est obligatoire." };
+
+  try {
+    const club = await prisma.club.create({
+      data: {
+        nom,
+        ville: geo.ville,
+        codePostal: codePostalFinal,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        ligue,
+        district,
+        telephone,
+        email: pending.email,
+        passwordHash: null,
+        licenceFichierUrl: licenceUrl,
+        role: "club",
+        statutVerification: "en_attente",
+        oauthProvider: pending.provider,
+        oauthProviderId: pending.providerId,
+        oauthName: pending.name ?? null,
+        oauthPicture: pending.picture ?? null,
+      },
+    });
+    await createSession(club.id);
+
+    await sendRegistrationConfirmationEmail({ to: pending.email, nom }).catch(() => {});
+    await sendAdminNewRegistrationEmail({
+      nom,
+      email: pending.email,
+      ville: geo.ville,
+      telephone,
+    }).catch(() => {});
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002")
+      return { error: "L'inscription n'a pas pu être finalisée." };
+    return { error: "Erreur lors de la création du compte." };
+  }
+
+  revalidatePath("/");
+  redirect("/dashboard?welcome=1");
 }

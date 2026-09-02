@@ -46,6 +46,25 @@ const androidSteps = [
   },
 ];
 
+function StepText({ text }: { text: string }) {
+  // Remplace les segments **gras** par des <strong> sans utiliser dangerouslySetInnerHTML.
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <p className="text-sm leading-relaxed text-muted">
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <strong key={i} className="text-paper">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
+}
+
 function StepList({ steps }: { steps: { n: string; text: string }[] }) {
   return (
     <ol className="mt-6 space-y-4">
@@ -54,10 +73,7 @@ function StepList({ steps }: { steps: { n: string; text: string }[] }) {
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-[#04210f]">
             {s.n}
           </span>
-          <p
-            className="text-sm leading-relaxed text-muted"
-            dangerouslySetInnerHTML={{ __html: s.text }}
-          />
+          <StepText text={s.text} />
         </li>
       ))}
     </ol>

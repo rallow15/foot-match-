@@ -95,6 +95,7 @@ export async function rateLimitByAccount(
 
 // Limiteurs pré-configurés
 export const LOGIN_RATE_LIMIT: RateLimitOpts = { maxRequests: 5, windowMs: 60_000 }; // 5/min
+export const LOGIN_EMAIL_RATE_LIMIT: RateLimitOpts = { maxRequests: 10, windowMs: 60_000 }; // 10 tentatives/min par email
 export const REGISTER_RATE_LIMIT: RateLimitOpts = { maxRequests: 3, windowMs: 60_000 }; // 3/min
 export const CONTACT_RATE_LIMIT: RateLimitOpts = { maxRequests: 5, windowMs: 60_000 }; // 5/min
 export const PUBLIC_CONTACT_RATE_LIMIT: RateLimitOpts = { maxRequests: 3, windowMs: 600_000 }; // 3 / 10 min (formulaire public non authentifié)
@@ -104,3 +105,4 @@ export const PASSWORD_RESET_RATE_LIMIT: RateLimitOpts = { maxRequests: 3, window
 // authentifié (le token fait foi) : on limite par IP pour borner les lookups
 // DB en cas de spam de tokens aléatoires (DoS).
 export const RESET_SUBMIT_RATE_LIMIT: RateLimitOpts = { maxRequests: 10, windowMs: 60_000 }; // 10 / min
+export const GEO_AUTOCOMPLETE_RATE_LIMIT: RateLimitOpts = { maxRequests: 30, windowMs: 60_000 }; // 30 requêtes/min par IP

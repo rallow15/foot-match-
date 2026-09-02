@@ -1,37 +1,33 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
-import { registerAction, type ActionState } from "@/app/actions";
+import { completeOAuthRegisterAction, type ActionState } from "@/app/actions";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
-import { GoogleSignInButton } from "./GoogleSignInButton";
 
-export function RegisterForm() {
-  const [state, formAction, pending] = useActionState(registerAction, undefined as ActionState);
+export function OAuthCompleteForm() {
+  const [state, formAction, pending] = useActionState(
+    completeOAuthRegisterAction,
+    undefined as ActionState,
+  );
 
-  // Champs contrôlés : leur valeur persiste après une erreur serveur.
   const [nom, setNom] = useState("");
   const [ville, setVille] = useState("");
   const [codePostal, setCodePostal] = useState("");
   const [ligue, setLigue] = useState("");
   const [district, setDistrict] = useState("");
   const [telephone, setTelephone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  // Le fichier ne peut pas être réinjecté dans l'input (sécurité navigateur),
-  // on garde juste un libellé pour l'utilisateur.
   const [licenceName, setLicenceName] = useState("");
 
   const districts = ligue ? districtsForLigue(ligue) : [];
 
   return (
     <form action={formAction} className="card w-full max-w-2xl p-7">
-      <p className="eyebrow text-accent">Nouveau club</p>
-      <h1 className="headline mt-2 text-3xl text-paper">Inscrire mon club</h1>
+      <p className="eyebrow text-accent">Compte Google lié</p>
+      <h1 className="headline mt-2 text-3xl text-paper">Compléter l&apos;inscription</h1>
       <p className="mt-2 text-sm text-muted">
-        Votre compte sera vérifié manuellement (licence de dirigeant/éducateur) avant
-        d&apos;être activé. Vous pouvez vous connecter immédiatement mais ne pourrez publier
-        qu&apos;une fois validé.
+        Votre compte Google est bien reconnu. Pour finaliser votre inscription,
+        indiquez les informations de votre club et téléversez votre licence de
+        dirigeant/éducateur.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -101,13 +97,15 @@ export function RegisterForm() {
             onChange={(e) => setDistrict(e.target.value)}
             disabled={districts.length === 0}
           >
-            <option value="" disabled>{districts.length === 0 ? "Choisir d'abord la ligue…" : "Choisir le district…"}</option>
+            <option value="" disabled>
+              {districts.length === 0 ? "Choisir d'abord la ligue…" : "Choisir le district…"}
+            </option>
             {districts.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label className="label" htmlFor="telephone">Téléphone *</label>
           <input
             id="telephone"
@@ -118,39 +116,6 @@ export function RegisterForm() {
             value={telephone}
             onChange={(e) => setTelephone(e.target.value)}
           />
-        </div>
-        <div>
-          <label className="label" htmlFor="email">Email *</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="input"
-            placeholder="contact@club.fr"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="password">
-            Mot de passe *{" "}
-            <span className="text-muted-2 normal-case tracking-normal">(min. 8 caractères)</span>
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            minLength={8}
-            required
-            className="input"
-            aria-describedby="password-help"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <p id="password-help" className="mt-1 text-xs text-muted-2">
-            3 types parmi : minuscule, majuscule, chiffre, symbole.
-          </p>
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="licence">
@@ -181,23 +146,8 @@ export function RegisterForm() {
       )}
 
       <button type="submit" disabled={pending} className="btn-accent mt-6 w-full">
-        {pending ? "Création du compte…" : "Créer le compte"}
+        {pending ? "Finalisation…" : "Finaliser l'inscription"}
       </button>
-
-      <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-line" />
-        <span className="text-xs text-muted">ou</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
-
-      <GoogleSignInButton mode="register" />
-
-      <p className="mt-5 text-center text-sm text-muted">
-        Déjà inscrit ?{" "}
-        <Link href="/login" className="text-accent hover:underline">
-          Se connecter
-        </Link>
-      </p>
     </form>
   );
 }

@@ -29,9 +29,16 @@ model Club {
   statutVerification   String     @default("en_attente")
   // reason text shown to club when refused
   refusMotif           String?
-  passwordHash         String
+  // null si le compte a été créé via OAuth (Google/Apple) ; conservé si auth email/mdp
+  passwordHash         String?
   // distinguishes a platform admin from a regular club
   role                 String     @default("club") // club | admin
+  // OAuth identity (si création via SSO). Permet la reconnexion sans mot de passe.
+  oauthProvider        String?
+  oauthProviderId      String?
+  // Nom / image fournis par le provider (Apple ne donne le nom qu'à la première connexion)
+  oauthName            String?
+  oauthPicture         String?
   // Anti brute-force login : compteur d'échecs + verrou temporaire. L'état est
   // en base (pas en mémoire), donc il survit aux redémarrages et aux instances
   // multiples — complète rate-limit.ts qui reste mono-instance.
@@ -49,6 +56,7 @@ model Club {
   @@index([email])
   @@index([ligue, district])
   @@index([statutVerification, role])
+  @@unique([oauthProvider, oauthProviderId])
 }
 
 model Equipe {

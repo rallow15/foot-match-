@@ -13,6 +13,7 @@ Pas de gestion de résultats, pas de compétition — juste de la mise en relati
 - **Tailwind CSS v4** (thème custom FIFA-inspired dans `src/app/globals.css`)
 - **Prisma 6 + SQLite** (base locale out-of-the-box ; cible prod : Postgres/Supabase)
 - **Auth maison** : email/mot de passe (bcrypt) + cookie de session httpOnly
+- **OAuth** : connexion/inscription via **Google** (Apple peut être ajouté plus tard)
 - **Géoloc** : API officielle `api-adresse.data.gouv.fr` (autocomplete + lat/lng) + distance haversine
 - **Email** : `nodemailer` (si `SMTP_HOST` renseigné, sinon fallback console)
 
@@ -71,6 +72,17 @@ Niveaux : Jeunes = Départemental/Régional/National · Seniors = Régional/Dép
 
 Renseigner dans `.env` : `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 Sans SMTP, les notifications de contact sont **loggées dans la console serveur**.
+
+## Configuration OAuth Google (optionnel)
+
+1. Créer des identifiants OAuth 2.0 sur [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. Ajouter l'URI de redirection autorisée : `${APP_URL}/api/auth/google/callback`.
+3. Renseigner dans `.env` :
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+   - `OAUTH_COOKIE_SECRET` (générer avec `openssl rand -base64 32`)
+
+Sans configuration OAuth, le site continue de fonctionner avec email/mot de passe uniquement.
 
 ## Notes / limites MVP
 

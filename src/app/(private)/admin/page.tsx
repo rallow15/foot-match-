@@ -71,11 +71,11 @@ export default async function AdminPage({
                     <p className="mt-1 text-xs text-muted-2">Inscrit {relTime(c.createdAt)}</p>
                   </div>
 
-                  {c.licenceFichierUrl && (
+                  {c.licenceFichierUrl?.startsWith("/api/uploads/") && (
                     <a
                       href={c.licenceFichierUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="btn-ghost text-sm"
                     >
                       Voir la licence
