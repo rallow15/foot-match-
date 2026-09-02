@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, hashOpaqueToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIpAsync } from "@/lib/ip";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,16 @@ interface MeResponse {
   } | null;
 }
 
+// Rate-limit léger pour /api/me : appelé par le header client à chaque page.
+const ME_RATE_LIMIT = { maxRequests: 60, windowMs: 60_000 };
+
 export async function GET(): Promise<NextResponse<MeResponse>> {
+  const ip = await getClientIpAsync();
+  const allowed = await rateLimit(ip, "api-me", ME_RATE_LIMIT);
+  if (!allowed) {
+    return NextResponse.json({ club: null }, { status: 429 });
+  }
+
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
 

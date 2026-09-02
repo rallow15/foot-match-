@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = "https://www.monmatchamical.fr";
+const BASE_URL = (process.env.APP_URL ?? "https://www.monmatchamical.fr").replace(/\/$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {

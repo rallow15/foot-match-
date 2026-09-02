@@ -57,6 +57,29 @@ async function getClientIp(): Promise<string> {
   return getClientIpAsync();
 }
 
+// Retourne un message d'erreur upload sûr côté client. En production, on
+// évite de fuiter la stack / messages internes de Supabase ; en dev on garde
+// le message original pour faciliter le débogage.
+function uploadErrorMessage(error: unknown): string {
+  const isDev = process.env.NODE_ENV === "development";
+  const msg = error instanceof Error ? error.message : String(error);
+
+  const knownUserErrors = [
+    "Format de fichier non autorisé.",
+    "Fichier trop volumineux (max 8 Mo).",
+    "La licence de dirigeant/éducateur est obligatoire.",
+    "Le fichier ne correspond pas au format déclaré (signature invalide).",
+    "Le fichier n'a pas pu être enregistré.",
+  ];
+
+  if (knownUserErrors.some((k) => msg.includes(k))) {
+    return msg;
+  }
+  if (isDev) return msg;
+  // Erreur inattendue : ne pas exposer de détails.
+  return "Erreur lors du téléversement du fichier. Veuillez réessayer.";
+}
+
 /* ---------------- Auth ---------------- */
 
 // Verrouillage temporaire du compte après N échecs consécutifs (anti brute-
@@ -143,7 +166,7 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   try {
     licenceUrl = await saveUpload(licence, "licence");
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: uploadErrorMessage(e) };
   }
   if (!licenceUrl) return { error: "La licence de dirigeant/éducateur est obligatoire." };
 
@@ -892,7 +915,7 @@ export async function updateLogoAction(_prev: ActionState, formData: FormData): 
     // servie directement par le CDN Supabase — stockée telle quelle.
     url = saved;
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: uploadErrorMessage(e) };
   }
 
   // Supprime l'ancien logo du bucket (best-effort) avant de stocker la nouvelle URL.
@@ -968,7 +991,7 @@ export async function completeOAuthRegisterAction(_prev: ActionState, formData: 
   try {
     licenceUrl = await saveUpload(licence, "licence");
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: uploadErrorMessage(e) };
   }
   if (!licenceUrl) return { error: "La licence de dirigeant/éducateur est obligatoire." };
 

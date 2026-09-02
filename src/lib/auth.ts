@@ -27,7 +27,9 @@ export async function verifyPassword(
 // énumération d'emails par oracle de timing).
 let _dummyHash: string | null = null;
 export async function verifyPasswordAgainstDummy(password: string): Promise<void> {
-  if (!_dummyHash) _dummyHash = await bcrypt.hash("dummy-constant-value", 10);
+  // Même coût que les vrais hashes (12) pour ne pas créer d'oracle de timing
+  // entre un compte existant et un compte absent.
+  if (!_dummyHash) _dummyHash = await bcrypt.hash("dummy-constant-value", 12);
   await bcrypt.compare(password, _dummyHash).catch(() => {});
 }
 

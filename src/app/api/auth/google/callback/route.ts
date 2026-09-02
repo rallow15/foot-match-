@@ -40,7 +40,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const user = await fetchGoogleUserInfo(accessToken);
 
     if (!user.email_verified) {
-      return NextResponse.redirect(new URL("/login?error=oauth_email_unverified", request.url));
+      // Erreur générique côté client ; le détail reste dans les logs serveur.
+      console.warn("[oauth google callback] email non vérifié:", user.email);
+      return NextResponse.redirect(new URL("/login?error=oauth_failed", request.url));
     }
 
     // Recherche par identité OAuth.
@@ -55,10 +57,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         select: { id: true },
       });
       if (existing) {
-        // Pas de fusion auto pour éviter le takeover.
-        return NextResponse.redirect(
-          new URL("/login?error=oauth_email_exists", request.url),
-        );
+        // Pas de fusion auto pour éviter le takeover. Message générique pour ne
+        // pas révéler l'existence d'un compte classique avec le même email.
+        console.warn("[oauth google callback] compte email/mdp existant:", user.email);
+        return NextResponse.redirect(new URL("/login?error=oauth_failed", request.url));
       }
 
       // Nouveau compte : on stocke temporairement les infos OAuth et on redirige
