@@ -21,7 +21,7 @@ export function OAuthCompleteForm() {
   const districts = ligue ? districtsForLigue(ligue) : [];
 
   return (
-    <form action={formAction} className="card w-full max-w-2xl p-7">
+    <form action={formAction} encType="multipart/form-data" className="card w-full max-w-2xl p-7">
       <p className="eyebrow text-accent">Compte Google lié</p>
       <h1 className="headline mt-2 text-3xl text-paper">Compléter l&apos;inscription</h1>
       <p className="mt-2 text-sm text-muted">

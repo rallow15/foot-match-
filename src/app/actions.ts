@@ -20,7 +20,7 @@ import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfir
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
 import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, LOGIN_EMAIL_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, PUBLIC_CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import { getClientIpAsync } from "@/lib/ip";
-import { consumePendingOAuthProfile } from "@/lib/oauth-state";
+import { getPendingOAuthProfile, deletePendingOAuthProfile } from "@/lib/oauth-state";
 import {
   DOM_EXT,
   STATUT_ANNONCE,
@@ -919,7 +919,11 @@ export async function completeOAuthRegisterAction(_prev: ActionState, formData: 
     return { error: "Trop de tentatives. Réessayez dans un instant." };
   }
 
-  const pending = await consumePendingOAuthProfile();
+  // Lecture seule d'abord : on ne supprime le cookie temporaire qu'une fois
+  // le compte créé avec succès. Ainsi, une erreur de validation ou
+  // d'upload de licence laisse l'utilisateur pouvoir corriger et réessayer
+  // sans être renvoyé vers /inscription.
+  const pending = await getPendingOAuthProfile();
   if (!pending) {
     return { error: "Session d'inscription expirée. Veuillez recommencer." };
   }
@@ -991,6 +995,9 @@ export async function completeOAuthRegisterAction(_prev: ActionState, formData: 
       },
     });
     await createSession(club.id);
+
+    // Suppression du cookie temporaire seulement après succès.
+    await deletePendingOAuthProfile();
 
     await sendRegistrationConfirmationEmail({ to: pending.email, nom }).catch(() => {});
     await sendAdminNewRegistrationEmail({

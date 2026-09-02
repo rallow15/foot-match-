@@ -9,7 +9,8 @@ export const metadata = {
 };
 
 export default async function OAuthCompletePage() {
-  // Lecture seule : la suppression du cookie est faite dans la Server Action.
+  // Lecture seule : la suppression du cookie temporaire est faite dans la Server
+  // Action, une fois le compte créé avec succès.
   const pending = await getPendingOAuthProfile();
 
   // Si le cookie temporaire est absent/expiré, on renvoie vers l'inscription classique.
