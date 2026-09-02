@@ -20,7 +20,7 @@ export default async function LoginPage({
   const errorMessage = error ? OAUTH_ERRORS[error] : undefined;
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-16 sm:px-6">
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-10 sm:px-6">
       <div className="w-full max-w-md">
         {reset && (
           <p className="mb-4 rounded-sm border border-accent/40 bg-accent/10 px-3 py-2 text-center text-sm text-accent">

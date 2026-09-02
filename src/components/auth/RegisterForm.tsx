@@ -25,17 +25,25 @@ export function RegisterForm() {
   const districts = ligue ? districtsForLigue(ligue) : [];
 
   return (
-    <form action={formAction} className="card w-full max-w-2xl p-7">
-      <p className="eyebrow text-accent">Nouveau club</p>
-      <h1 className="headline mt-2 text-3xl text-paper">Inscrire mon club</h1>
-      <p className="mt-2 text-sm text-muted">
-        Votre compte sera vérifié manuellement (licence de dirigeant/éducateur) avant
-        d&apos;être activé. Vous pouvez vous connecter immédiatement mais ne pourrez publier
-        qu&apos;une fois validé.
-      </p>
+    <form action={formAction} encType="multipart/form-data" className="card w-full p-6">
+      <p className="eyebrow text-accent text-center">Nouveau club</p>
+      <h1 className="headline mt-1 text-center text-2xl text-paper">Inscrire mon club</h1>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
+      <div className="mt-4 space-y-3">
+        <GoogleSignInButton mode="register" />
+        <p className="text-center text-[11px] text-muted">
+          Inscription rapide — aucun mot de passe à mémoriser.
+        </p>
+      </div>
+
+      <div className="my-4 flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-[11px] uppercase tracking-wide text-muted">ou par email</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+      <div className="space-y-3">
+        <div>
           <label className="label" htmlFor="nom">Nom du club *</label>
           <input
             id="nom"
@@ -47,96 +55,99 @@ export function RegisterForm() {
             onChange={(e) => setNom(e.target.value)}
           />
         </div>
-        <div>
-          <label className="label" htmlFor="ville">Ville *</label>
-          <input
-            id="ville"
-            name="ville"
-            required
-            className="input"
-            placeholder="Ex. Lyon"
-            value={ville}
-            onChange={(e) => setVille(e.target.value)}
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="ville">Ville *</label>
+            <input
+              id="ville"
+              name="ville"
+              required
+              className="input"
+              placeholder="Ex. Lyon"
+              value={ville}
+              onChange={(e) => setVille(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="codePostal">Code postal *</label>
+            <input
+              id="codePostal"
+              name="codePostal"
+              required
+              className="input"
+              placeholder="69000"
+              value={codePostal}
+              onChange={(e) => setCodePostal(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="ligue">Ligue *</label>
+            <select
+              id="ligue"
+              name="ligue"
+              required
+              className="input"
+              value={ligue}
+              onChange={(e) => {
+                setLigue(e.target.value);
+                setDistrict("");
+              }}
+            >
+              <option value="" disabled>Choisir…</option>
+              {LIGUES.map((l) => (
+                <option key={l.ligue} value={l.ligue}>{l.ligue}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="district">District *</label>
+            <select
+              id="district"
+              name="district"
+              required
+              className="input"
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              disabled={districts.length === 0}
+            >
+              <option value="" disabled>{districts.length === 0 ? "Ligue d'abord" : "Choisir…"}</option>
+              {districts.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="telephone">Téléphone *</label>
+            <input
+              id="telephone"
+              name="telephone"
+              required
+              className="input"
+              placeholder="06 12 34 56 78"
+              value={telephone}
+              onChange={(e) => setTelephone(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="email">Email *</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              className="input"
+              placeholder="contact@club.fr"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
         </div>
         <div>
-          <label className="label" htmlFor="codePostal">Code postal *</label>
-          <input
-            id="codePostal"
-            name="codePostal"
-            required
-            className="input"
-            placeholder="69000"
-            value={codePostal}
-            onChange={(e) => setCodePostal(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="ligue">Ligue *</label>
-          <select
-            id="ligue"
-            name="ligue"
-            required
-            className="input"
-            value={ligue}
-            onChange={(e) => {
-              setLigue(e.target.value);
-              setDistrict("");
-            }}
-          >
-            <option value="" disabled>Choisir la ligue…</option>
-            {LIGUES.map((l) => (
-              <option key={l.ligue} value={l.ligue}>{l.ligue}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="district">District (sous-ligue) *</label>
-          <select
-            id="district"
-            name="district"
-            required
-            className="input"
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
-            disabled={districts.length === 0}
-          >
-            <option value="" disabled>{districts.length === 0 ? "Choisir d'abord la ligue…" : "Choisir le district…"}</option>
-            {districts.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="telephone">Téléphone *</label>
-          <input
-            id="telephone"
-            name="telephone"
-            required
-            className="input"
-            placeholder="06 12 34 56 78"
-            value={telephone}
-            onChange={(e) => setTelephone(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="email">Email *</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="input"
-            placeholder="contact@club.fr"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="password">
-            Mot de passe *{" "}
-            <span className="text-muted-2 normal-case tracking-normal">(min. 8 caractères)</span>
-          </label>
+          <label className="label" htmlFor="password">Mot de passe * <span className="text-muted-2">(min. 8)</span></label>
           <input
             id="password"
             name="password"
@@ -148,14 +159,13 @@ export function RegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <p id="password-help" className="mt-1 text-xs text-muted-2">
-            3 types parmi : minuscule, majuscule, chiffre, symbole.
+          <p id="password-help" className="mt-1 text-[11px] text-muted-2">
+            3 types : minuscule, majuscule, chiffre, symbole.
           </p>
         </div>
-        <div className="sm:col-span-2">
+        <div>
           <label className="label" htmlFor="licence">
-            Licence dirigeant/éducateur *{" "}
-            <span className="text-muted-2 normal-case tracking-normal">(PDF, JPG, PNG — max 8 Mo)</span>
+            Licence * <span className="text-muted-2">(PDF/JPG/PNG, max 8 Mo)</span>
           </label>
           <input
             id="licence"
@@ -163,11 +173,11 @@ export function RegisterForm() {
             type="file"
             required
             accept=".pdf,.jpg,.jpeg,.png,.webp"
-            className="block w-full text-sm text-muted file:mr-4 file:cursor-pointer file:rounded-sm file:border file:border-line file:bg-ink-3 file:px-4 file:py-2 file:text-paper hover:file:bg-ink-4"
+            className="block w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-sm file:border file:border-line file:bg-ink-3 file:px-3 file:py-1.5 file:text-paper hover:file:bg-ink-4"
             onChange={(e) => setLicenceName(e.target.files?.[0]?.name ?? "")}
           />
           {licenceName && (
-            <p className="mt-1 text-xs text-muted-2">
+            <p className="mt-1 text-[11px] text-muted-2">
               Fichier sélectionné : {licenceName}
             </p>
           )}
@@ -175,24 +185,20 @@ export function RegisterForm() {
       </div>
 
       {state?.error && (
-        <p className="mt-4 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p className="mt-3 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
 
-      <button type="submit" disabled={pending} className="btn-accent mt-6 w-full">
-        {pending ? "Création du compte…" : "Créer le compte"}
+      <button type="submit" disabled={pending} className="btn-accent mt-4 w-full">
+        {pending ? "Création…" : "Créer le compte"}
       </button>
 
-      <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-line" />
-        <span className="text-xs text-muted">ou</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      <p className="mt-4 text-center text-[11px] text-muted">
+        Compte vérifié manuellement avant activation.
+      </p>
 
-      <GoogleSignInButton mode="register" />
-
-      <p className="mt-5 text-center text-sm text-muted">
+      <p className="mt-3 text-center text-sm text-muted">
         Déjà inscrit ?{" "}
         <Link href="/login" className="text-accent hover:underline">
           Se connecter

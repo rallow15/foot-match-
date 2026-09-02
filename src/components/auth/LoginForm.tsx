@@ -9,11 +9,21 @@ export function LoginForm({ redirect }: { redirect?: string }) {
   const [state, formAction, pending] = useActionState(loginAction, undefined as ActionState);
 
   return (
-    <form action={formAction} className="card w-full max-w-md p-7">
-      <p className="eyebrow text-accent">Espace club</p>
-      <h1 className="headline mt-2 text-3xl text-paper">Connexion</h1>
+    <form action={formAction} className="card w-full p-6">
+      <p className="eyebrow text-accent text-center">Espace club</p>
+      <h1 className="headline mt-1 text-center text-2xl text-paper">Connexion</h1>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-4 space-y-3">
+        <GoogleSignInButton mode="login" redirect={redirect} />
+      </div>
+
+      <div className="my-4 flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-[11px] uppercase tracking-wide text-muted">ou par email</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+      <div className="space-y-3">
         <div>
           <label className="label" htmlFor="email">Email</label>
           <input id="email" name="email" type="email" autoComplete="email" required className="input" />
@@ -24,7 +34,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
         </div>
       </div>
 
-      <div className="mt-3 text-right">
+      <div className="mt-2 text-right">
         <Link href="/mot-de-passe-oublie" className="text-sm text-muted hover:text-accent hover:underline">
           Mot de passe oublié ?
         </Link>
@@ -33,24 +43,16 @@ export function LoginForm({ redirect }: { redirect?: string }) {
       {redirect && <input type="hidden" name="redirect" value={redirect} />}
 
       {state?.error && (
-        <p className="mt-4 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p className="mt-3 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
 
-      <button type="submit" disabled={pending} className="btn-accent mt-6 w-full">
+      <button type="submit" disabled={pending} className="btn-accent mt-4 w-full">
         {pending ? "Connexion…" : "Se connecter"}
       </button>
 
-      <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-line" />
-        <span className="text-xs text-muted">ou</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
-
-      <GoogleSignInButton mode="login" redirect={redirect} />
-
-      <p className="mt-5 text-center text-sm text-muted">
+      <p className="mt-4 text-center text-sm text-muted">
         Pas encore de compte ?{" "}
         <Link href="/inscription" className="text-accent hover:underline">
           Inscrire mon club

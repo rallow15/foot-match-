@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default function InscriptionPage() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center justify-center px-4 py-14 sm:px-6">
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-10 sm:px-6">
       <RegisterForm />
     </div>
   );
