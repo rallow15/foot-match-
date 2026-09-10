@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, type ActionState } from "@/app/actions";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { AppleSignInButton } from "./AppleSignInButton";
 
-export function LoginForm({ redirect }: { redirect?: string }) {
+export function LoginForm({ redirect, appleEnabled }: { redirect?: string; appleEnabled?: boolean }) {
   const [state, formAction, pending] = useActionState(loginAction, undefined as ActionState);
 
   return (
@@ -15,6 +16,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
 
       <div className="mt-4 space-y-3">
         <GoogleSignInButton mode="login" redirect={redirect} />
+        {appleEnabled && <AppleSignInButton mode="login" redirect={redirect} />}
       </div>
 
       <div className="my-4 flex items-center gap-3">

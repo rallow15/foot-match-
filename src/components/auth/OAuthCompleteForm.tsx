@@ -22,10 +22,10 @@ export function OAuthCompleteForm() {
 
   return (
     <form action={formAction} encType="multipart/form-data" className="card w-full max-w-2xl p-7">
-      <p className="eyebrow text-accent">Compte Google lié</p>
+      <p className="eyebrow text-accent">Compte lié</p>
       <h1 className="headline mt-2 text-3xl text-paper">Compléter l&apos;inscription</h1>
       <p className="mt-2 text-sm text-muted">
-        Votre compte Google est bien reconnu. Pour finaliser votre inscription,
+        Votre compte est bien reconnu. Pour finaliser votre inscription,
         indiquez les informations de votre club et téléversez votre licence de
         dirigeant/éducateur.
       </p>

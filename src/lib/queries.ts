@@ -291,3 +291,99 @@ export const fetchClubProfileCached = unstable_cache(fetchClubProfile, ["club-pr
   revalidate: PUBLIC_CACHE_REVALIDATE,
   tags: ["clubs"],
 });
+
+// Profil public allégé d'un club (résultat de recherche).
+const CLUB_SEARCH_SELECT = {
+  id: true,
+  nom: true,
+  ville: true,
+  codePostal: true,
+  district: true,
+  ligue: true,
+  logoUrl: true,
+  latitude: true,
+  longitude: true,
+  equipes: {
+    select: { categorie: true, niveau: true },
+    orderBy: { categorie: "asc" },
+  },
+} as const;
+
+export interface ClubSearchParams {
+  categorie?: string;
+  niveau?: string;
+  ligue?: string;
+  district?: string;
+  ville?: string;
+  latitude?: string;
+  longitude?: string;
+  rayon?: string;
+  excludeClubId?: string;
+  page?: string;
+}
+
+export type ClubSearchResult = Awaited<ReturnType<typeof searchClubs>>;
+
+const CLUB_SEARCH_LIMIT = 12;
+
+async function _searchClubsImpl(params: ClubSearchParams) {
+  // Base : clubs validés, rôle club (pas admin, pas refusé).
+  const where: Record<string, unknown> = {
+    role: "club",
+    statutVerification: "valide",
+  };
+
+  if (params.ligue) where.ligue = params.ligue;
+  if (params.district) where.district = params.district;
+  if (params.excludeClubId) where.id = { not: params.excludeClubId };
+
+  // Filtre géographique (bounding-box approximative).
+  const lat = parseFloat(params.latitude ?? "");
+  const lng = parseFloat(params.longitude ?? "");
+  const rayon = parseFloat(params.rayon ?? "");
+  const hasGeo = !Number.isNaN(lat) && !Number.isNaN(lng) && !Number.isNaN(rayon) && rayon > 0;
+  if (hasGeo) {
+    const delta = rayon / 111; // ~111 km par degré
+    where.latitude = { gte: lat - delta, lte: lat + delta };
+    where.longitude = { gte: lng - delta, lte: lng + delta };
+  }
+
+  // Filtre équipe : catégorie obligatoire, niveau optionnel.
+  const equipeFilter: Record<string, unknown> = {};
+  if (params.categorie) equipeFilter.categorie = params.categorie;
+  if (params.niveau) equipeFilter.niveau = params.niveau;
+  if (Object.keys(equipeFilter).length > 0) {
+    where.equipes = { some: equipeFilter };
+  }
+
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const skip = (page - 1) * CLUB_SEARCH_LIMIT;
+
+  const [total, rows] = await Promise.all([
+    prisma.club.count({ where }),
+    prisma.club.findMany({
+      where,
+      select: CLUB_SEARCH_SELECT,
+      orderBy: { nom: "asc" },
+      skip,
+      take: CLUB_SEARCH_LIMIT,
+    }),
+  ]);
+
+  // Filtre haversine précis sur le sous-ensemble.
+  let clubs = rows;
+  if (hasGeo) {
+    clubs = rows.filter((c) => haversineKm(lat, lng, c.latitude, c.longitude) <= rayon);
+  }
+
+  return { clubs, total };
+}
+
+export const searchClubs = unstable_cache(
+  (params: ClubSearchParams) => _searchClubsImpl(params),
+  ["search-clubs"],
+  {
+    revalidate: 60,
+    tags: ["clubs"],
+  },
+);

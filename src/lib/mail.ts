@@ -53,6 +53,45 @@ ${data.message ? `Message du demandeur :\n${data.message}\n\n` : ""}Vous pouvez 
   await t.sendMail({ from, to: data.to, subject, text });
 }
 
+export interface ClubContactMailData {
+  to: string; // club cible
+  cibleClub: string;
+  demandeurClub: string;
+  demandeurClubId: string;
+  demandeurEmail: string;
+  demandeurTelephone: string;
+  message?: string;
+}
+
+// Contact direct d'un club vers un autre club (sans annonce).
+// Les coordonnées du demandeur sont transmises au club cible par email ; les
+// coordonnées du club cible sont révélées au demandeur uniquement après envoi.
+export async function sendClubContactNotification(data: ClubContactMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const subject = `Demande de match amical — ${data.demandeurClub}`;
+  const text = `Bonjour ${data.cibleClub},
+
+Le club "${data.demandeurClub}" souhaite entrer en contact avec vous via Matchs Amicaux pour organiser un match amical.
+
+Ses coordonnées :
+- Email : ${data.demandeurEmail}
+- Téléphone : ${data.demandeurTelephone}
+
+${data.message ? `Message du demandeur :\n${data.message}\n\n` : ""}Vous pouvez le recontacter directement (téléphone / WhatsApp / email).
+
+Voir son profil : ${appUrl}/clubs/${data.demandeurClubId}
+
+— ${appUrl}`;
+
+  const t = transporter();
+  if (!t) {
+    fallbackLog("CLUB CONTACT");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}
+
 export interface PasswordResetMailData {
   to: string; // club demandeur
   resetUrl: string; // lien signé (porte le token clair)

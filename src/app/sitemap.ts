@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "/",
     "/annonces",
+    "/clubs",
     "/matchs-confirmees",
     "/comment-ca-marche",
     "/ajouter-ecran-accueil",

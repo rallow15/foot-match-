@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { LIGUES } from "../src/lib/ligues";
+import { CATEGORIES } from "../src/lib/referential";
 
 const prisma = new PrismaClient();
 
@@ -26,6 +28,31 @@ function day(offset: number): string {
   const d = new Date();
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
+}
+
+// Générateur déterministe pour simuler une ville/code postal/coordonnées GPS
+// pour chaque district sans avoir à maintenir une table géo complète.
+function districtGeo(district: string): CitySeed {
+  const h = createHash("sha256").update(district).digest("hex");
+  // France métro : lat 41.3 - 51.1, lng -5.1 - 9.6
+  const lat = 41.3 + (parseInt(h.slice(0, 8), 16) % 98) / 10;
+  const lng = -5.1 + (parseInt(h.slice(8, 16), 16) % 147) / 10;
+  const cp = (1000 + (parseInt(h.slice(16, 24), 16) % 94999)).toString().padStart(5, "0");
+  const ville = district.replace(/\s+/g, "-");
+  return { ville, cp, lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
+}
+
+function uniquePhone(index: number): string {
+  return `06${String(index).padStart(2, "0")}${String((index * 7) % 10000).padStart(4, "0")}`;
+}
+
+function districtSlug(district: string): string {
+  return district
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function main() {
@@ -131,7 +158,7 @@ async function main() {
     equipes: { categorie: string; niveau?: string }[];
   }
 
-  const clubs: ClubDef[] = [
+  const demoClubs: ClubDef[] = [
     {
       nom: "AS Lyon Foot",
       city: "lyon",
@@ -233,6 +260,31 @@ async function main() {
     },
   ];
 
+  // Génération automatique : 1 club par district, dans toutes les ligues.
+  // Chaque club reçoit une catégorie différente en faisant tourner CATEGORIES.
+  const allDistrictClubs: ClubDef[] = [];
+  let districtIndex = 0;
+  for (const { ligue, districts } of LIGUES) {
+    for (const district of districts) {
+      const geo = districtGeo(district);
+      const cat = CATEGORIES[districtIndex % CATEGORIES.length];
+      const phone = uniquePhone(districtIndex + 10);
+      const slug = districtSlug(district);
+      const email = `contact.${slug}@demo-matchs-amicaux.fr`;
+      allDistrictClubs.push({
+        nom: `Club de ${district}`,
+        city: "lyon", // valeur fictive, on écrase avec geo ensuite
+        tel: phone,
+        email,
+        statut: "valide",
+        equipes: [{ categorie: cat.value, niveau: cat.niveaux[0] }],
+      });
+      districtIndex++;
+    }
+  }
+
+  const clubs: ClubDef[] = [...demoClubs, ...allDistrictClubs];
+
   const annonceSpecs: Array<{
     clubIdx: number;
     eqIdx: number;
@@ -253,21 +305,29 @@ async function main() {
   ];
 
   for (const def of clubs) {
-    const c = CITIES[def.city];
+    const c = def.city === "lyon" && !CITIES[def.city]
+      ? districtGeo(def.nom)
+      : CITIES[def.city];
+    // Pour les clubs générés automatiquement, on utilise les coordonnées du district.
+    const citySeed = allDistrictClubs.includes(def) ? districtGeo(def.nom.replace("Club de ", "")) : c;
     const club = await prisma.club.create({
       data: {
         nom: def.nom,
-        ville: c.ville,
-        codePostal: c.cp,
-        latitude: c.lat,
-        longitude: c.lng,
+        ville: citySeed.ville,
+        codePostal: citySeed.cp,
+        latitude: citySeed.lat,
+        longitude: citySeed.lng,
         telephone: def.tel,
         email: def.email,
         passwordHash: clubPassword,
         role: "club",
         statutVerification: def.statut,
-        ligue: "Auvergne-Rhône-Alpes",
-        district: "Lyon-Rhône",
+        ligue: allDistrictClubs.includes(def)
+          ? LIGUES.find((l) => l.districts.some((d) => def.nom.endsWith(d)))?.ligue ?? "Auvergne-Rhône-Alpes"
+          : "Auvergne-Rhône-Alpes",
+        district: allDistrictClubs.includes(def)
+          ? def.nom.replace("Club de ", "")
+          : "Lyon-Rhône",
         licenceFichierUrl: demoLicenceUrl,
       },
     });
@@ -294,7 +354,7 @@ async function main() {
           domicileExterieur: a.dom,
           stadeDispo: a.stadeDispo,
           stadeNom: a.stadeNom ?? null,
-          stadeVille: a.stadeDispo ? c.ville : null,
+          stadeVille: a.stadeDispo ? citySeed.ville : null,
           arbitreDispo: a.arbitre,
           niveauSouhaite: a.niveau ?? null,
           note: a.note ?? null,

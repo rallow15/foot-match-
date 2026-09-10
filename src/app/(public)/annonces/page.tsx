@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { searchAnnonces } from "@/lib/queries";
+import { searchAnnonces, searchClubs, type SearchParams } from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
 import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
+import { ClubCard } from "@/components/ClubCard";
 import { SearchFilters } from "@/components/SearchFilters";
 import { Pagination } from "@/components/Pagination";
 import { ScrollToResults } from "@/components/ScrollToResults";
@@ -29,17 +30,9 @@ const SEARCH_FIELDS = [
   "ville",
 ];
 
-export default async function AnnoncesSearchPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const sp = await searchParams;
+function buildSearchParams(sp: Record<string, string | string[] | undefined>): SearchParams {
   const get = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
-
-  const currentClub = await getCurrentClub();
-
-  const params = {
+  return {
     categorie: get("categorie"),
     dateFrom: get("dateFrom"),
     dateTo: get("dateTo"),
@@ -53,8 +46,22 @@ export default async function AnnoncesSearchPage({
     latitude: get("latitude"),
     longitude: get("longitude"),
     rayon: get("rayon"),
+  };
+}
+
+export default async function AnnoncesSearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const currentClub = await getCurrentClub();
+
+  const baseParams = buildSearchParams(sp);
+  const params: SearchParams = {
+    ...baseParams,
     excludeClubId: currentClub?.id,
-    page: get("page"),
+    page: baseParams.page,
   };
 
   const hasSearch = SEARCH_FIELDS.some((k) => Boolean(params[k as keyof typeof params]));
@@ -113,16 +120,13 @@ export default async function AnnoncesSearchPage({
           </p>
         </div>
       ) : annonces.length === 0 ? (
-        <div className="card mt-6 p-12 text-center">
-          <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
-          <p className="mt-2 text-muted">
-            Élargissez la recherche ou{" "}
-            <Link href="/dashboard/annonces/nouvelle" className="text-accent hover:underline">
-              proposez la vôtre
-            </Link>{" "}
-            — un club près de chez vous la verra peut-être.
-          </p>
-        </div>
+        <AucuneAnnonceFallback
+          params={baseParams}
+          currentClubId={currentClub?.id}
+          hasGeo={hasGeo}
+          lat={lat}
+          lng={lng}
+        />
       ) : (
         <>
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
@@ -156,5 +160,77 @@ export default async function AnnoncesSearchPage({
         </>
       )}
     </div>
+  );
+}
+
+async function AucuneAnnonceFallback({
+  params,
+  currentClubId,
+  hasGeo,
+  lat,
+  lng,
+}: {
+  params: SearchParams;
+  currentClubId?: string;
+  hasGeo: boolean;
+  lat: number;
+  lng: number;
+}) {
+  // Si une catégorie est sélectionnée, on propose des clubs ayant une équipe compatible.
+  const suggestClubs = Boolean(params.categorie);
+  const { clubs } = suggestClubs
+    ? await searchClubs({
+        categorie: params.categorie,
+        niveau: params.niveau,
+        ligue: params.ligue,
+        district: params.district,
+        latitude: params.latitude,
+        longitude: params.longitude,
+        rayon: params.rayon,
+        excludeClubId: currentClubId,
+      })
+    : { clubs: [] };
+
+  return (
+    <>
+      <div className="card mt-6 p-12 text-center">
+        <p className="headline text-2xl text-paper">Aucune annonce pour ces critères</p>
+        <p className="mt-2 text-muted">
+          Élargissez la recherche ou{" "}
+          <Link href="/dashboard/annonces/nouvelle" className="text-accent hover:underline">
+            proposez la vôtre
+          </Link>{" "}
+          — un club près de chez vous la verra peut-être.
+        </p>
+      </div>
+
+      {suggestClubs && clubs.length > 0 && (
+        <section className="mt-10">
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <div>
+              <p className="eyebrow text-accent">Clubs compatibles</p>
+              <h2 className="headline mt-2 text-2xl text-paper">
+                Ces clubs ont une équipe {params.categorie}
+              </h2>
+            </div>
+            <Link
+              href={`/clubs?categorie=${encodeURIComponent(params.categorie ?? "")}`}
+              className="btn-ghost text-sm"
+            >
+              Voir tous les clubs →
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+            {clubs.slice(0, 6).map((c) => (
+              <ClubCard
+                key={c.id}
+                club={c}
+                distanceKm={hasGeo ? haversineKm(lat, lng, c.latitude, c.longitude) : null}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
   );
 }

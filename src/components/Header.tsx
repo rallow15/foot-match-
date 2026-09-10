@@ -13,7 +13,8 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Accueil" },
-  { href: "/annonces", label: "Rechercher" },
+  { href: "/annonces", label: "Annonces" },
+  { href: "/clubs", label: "Clubs" },
   { href: "/matchs-confirmees", label: "Matchs confirmés" },
   { href: "/comment-ca-marche", label: "Comment ça marche" },
   { href: "/ajouter-ecran-accueil", label: "Installer l’app" },

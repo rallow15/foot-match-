@@ -1,5 +1,14 @@
 import { LoginForm } from "@/components/auth/LoginForm";
 
+function isAppleEnabled(): boolean {
+  return Boolean(
+    process.env.APPLE_CLIENT_ID &&
+      process.env.APPLE_TEAM_ID &&
+      process.env.APPLE_KEY_ID &&
+      process.env.APPLE_PRIVATE_KEY_BASE64,
+  );
+}
+
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_invalid: "Lien de connexion invalide ou expiré. Veuillez réessayer.",
   oauth_email_unverified: "Votre adresse Google n'est pas vérifiée.",
@@ -33,7 +42,7 @@ export default async function LoginPage({
           </p>
         )}
       </div>
-      <LoginForm redirect={redirect} />
+      <LoginForm redirect={redirect} appleEnabled={isAppleEnabled()} />
     </div>
   );
 }

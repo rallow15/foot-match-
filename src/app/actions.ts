@@ -16,7 +16,7 @@ import {
   revokeAllSessions,
 } from "@/lib/auth";
 import { geocode } from "@/lib/geo";
-import { sendContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail, sendPublicContactEmail } from "@/lib/mail";
+import { sendContactNotification, sendClubContactNotification, sendPasswordResetEmail, sendRegistrationConfirmationEmail, sendAccountValidatedEmail, sendAccountRefusedEmail, sendAdminNewRegistrationEmail, sendPasswordChangedEmail, sendPublicContactEmail } from "@/lib/mail";
 import { isValidLigue, isValidDistrict } from "@/lib/ligues";
 import { rateLimit, rateLimitByAccount, LOGIN_RATE_LIMIT, LOGIN_EMAIL_RATE_LIMIT, REGISTER_RATE_LIMIT, CONTACT_RATE_LIMIT, PUBLIC_CONTACT_RATE_LIMIT, UPLOAD_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT, RESET_SUBMIT_RATE_LIMIT } from "@/lib/rate-limit";
 import { getClientIpAsync } from "@/lib/ip";
@@ -684,6 +684,57 @@ export async function contacterAction(_prev: ActionState, formData: FormData): P
   // demande effective (cf. PRD). Elles proviennent du serveur, jamais du client
   // — évite la fuite via les props du composant avant contact.
   return { ok: true, tel: annonce.club.telephone, email: annonce.club.email };
+}
+
+// Contact direct d'un club vers un autre club (sans annonce).
+// Mêmes règles de sécurité que contacterAction : les coordonnées du club cible
+// ne sont révélées au demandeur qu'après envoi effectif.
+export async function contacterClubAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  // Rate limiting par IP
+  const ip = await getClientIp();
+  if (!(await rateLimit(ip, "contact", CONTACT_RATE_LIMIT))) {
+    return { error: "Trop de demandes. Réessayez dans un instant." };
+  }
+
+  const club = await getCurrentClub();
+  if (!club) return { error: "Vous devez être connecté pour contacter un club." };
+  if (club.statutVerification !== "valide")
+    return { error: "Votre compte doit être validé pour contacter un club." };
+
+  const cibleId = String(formData.get("clubId") ?? "");
+  const message = String(formData.get("message") ?? "").trim();
+  if (!cibleId) return { error: "Club invalide." };
+  if (message) {
+    const check = validateLength(message, "Message", LIMITS.MESSAGE_MAX);
+    if (!check.valid) return { error: check.error! };
+  }
+
+  // Rate-limit par compte cible (anti-spam ciblé).
+  if (!(await rateLimitByAccount(cibleId, "club-contact", { maxRequests: 10, windowMs: 60_000 }))) {
+    return { error: "Trop de demandes vers ce club. Réessayez dans un instant." };
+  }
+
+  const cible = await prisma.club.findFirst({
+    where: { id: cibleId, role: "club", statutVerification: "valide" },
+    select: { id: true, nom: true, email: true, telephone: true },
+  });
+  if (!cible) return { error: "Club introuvable." };
+  if (cible.id === club.id) return { error: "Vous ne pouvez pas contacter votre propre club." };
+
+  await touchActivity(club.id);
+  await sendClubContactNotification({
+    to: cible.email,
+    cibleClub: cible.nom,
+    demandeurClub: club.nom,
+    demandeurClubId: club.id,
+    demandeurEmail: club.email,
+    demandeurTelephone: club.telephone,
+    message: message || undefined,
+  }).catch(() => {});
+
+  revalidatePath(`/clubs/${cible.id}`);
+  // Coordonnées du club cible révélées au demandeur uniquement après envoi.
+  return { ok: true, tel: cible.telephone, email: cible.email };
 }
 
 /* ---------------- Formulaire de contact public ---------------- */

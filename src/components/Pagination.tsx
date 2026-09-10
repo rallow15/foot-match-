@@ -6,9 +6,10 @@ interface PaginationProps {
   page: number;
   totalPages: number;
   filters: Record<string, string | undefined>;
+  basePath?: string;
 }
 
-export function Pagination({ page, totalPages, filters }: PaginationProps) {
+export function Pagination({ page, totalPages, filters, basePath = "/annonces" }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const query = new URLSearchParams();
@@ -23,7 +24,7 @@ export function Pagination({ page, totalPages, filters }: PaginationProps) {
       query.set("page", String(p));
     }
     const qs = query.toString();
-    return `/annonces${qs ? `?${qs}` : ""}`;
+    return `${basePath}${qs ? `?${qs}` : ""}`;
   }
 
   return (

@@ -71,7 +71,8 @@ function getKey(): Buffer {
 interface OAuthCookie {
   provider: string;
   state: string;
-  codeVerifier: string;
+  // Apple ne supporte pas PKCE ; Google l’utilise.
+  codeVerifier?: string;
   redirect?: string;
 }
 
@@ -131,7 +132,7 @@ export function generateOAuthState(): {
 export async function setOAuthCookie(
   provider: string,
   state: string,
-  codeVerifier: string,
+  codeVerifier?: string,
   redirect?: string,
 ): Promise<void> {
   const store = await cookies();

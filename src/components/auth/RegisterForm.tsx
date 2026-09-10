@@ -5,8 +5,9 @@ import { useActionState, useState } from "react";
 import { registerAction, type ActionState } from "@/app/actions";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { AppleSignInButton } from "./AppleSignInButton";
 
-export function RegisterForm() {
+export function RegisterForm({ appleEnabled }: { appleEnabled?: boolean }) {
   const [state, formAction, pending] = useActionState(registerAction, undefined as ActionState);
 
   // Champs contrôlés : leur valeur persiste après une erreur serveur.
@@ -31,6 +32,7 @@ export function RegisterForm() {
 
       <div className="mt-4 space-y-3">
         <GoogleSignInButton mode="register" />
+        {appleEnabled && <AppleSignInButton mode="register" />}
         <p className="text-center text-[11px] text-muted">
           Inscription rapide — aucun mot de passe à mémoriser.
         </p>
