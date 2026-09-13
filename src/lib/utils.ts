@@ -67,3 +67,10 @@ export function domExtLabel(v: string): string {
 export function statutAnnonceLabel(v: string): string {
   return (STATUT_ANNONCE_LABEL as Record<string, string>)[v] ?? v;
 }
+
+export function isNouveau(createdAt: Date | string | number): boolean {
+  const created =
+    createdAt instanceof Date ? createdAt.getTime() : new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  return Date.now() - created < 24 * 60 * 60 * 1000;
+}

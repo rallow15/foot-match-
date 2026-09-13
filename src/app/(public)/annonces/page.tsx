@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { searchAnnonces, searchClubs, type SearchParams } from "@/lib/queries";
+import {
+  searchAnnonces,
+  searchClubs,
+  fetchDefaultAnnonces,
+  type SearchParams,
+} from "@/lib/queries";
 import { haversineKm } from "@/lib/geo";
 import { getCurrentClub } from "@/lib/auth";
 import { AnnonceCard } from "@/components/AnnonceCard";
@@ -27,6 +32,7 @@ const SEARCH_FIELDS = [
   "arbitre",
   "ligue",
   "district",
+  "departement",
   "ville",
 ];
 
@@ -42,6 +48,7 @@ function buildSearchParams(sp: Record<string, string | string[] | undefined>): S
     arbitre: get("arbitre"),
     ligue: get("ligue"),
     district: get("district"),
+    departement: get("departement"),
     ville: get("ville"),
     latitude: get("latitude"),
     longitude: get("longitude"),
@@ -71,9 +78,10 @@ export default async function AnnoncesSearchPage({
 
   const { annonces, total } = hasSearch
     ? await searchAnnonces(params)
-    : { annonces: [], total: 0 };
+    : { annonces: await fetchDefaultAnnonces(), total: 0 };
 
   const totalPages = Math.ceil(total / limit);
+  const isDefault = !hasSearch;
 
   const lat = parseFloat(params.latitude ?? "");
   const lng = parseFloat(params.longitude ?? "");
@@ -97,7 +105,13 @@ export default async function AnnoncesSearchPage({
 
       <div id="annonces-results" className="mt-10 flex items-baseline justify-between">
         <p className="text-sm text-muted">
-          {hasSearch ? (
+          {isDefault ? (
+            <>
+              <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
+              {annonces.length > 1 ? "prochains matchs ouverts" : "prochain match ouvert"}
+              <span className="text-muted-2"> · affichage par défaut</span>
+            </>
+          ) : (
             <>
               <span className="font-display text-lg text-paper">{annonces.length}</span>{" "}
               {annonces.length > 1 ? "annonces trouvées" : "annonce trouvée"}
@@ -105,21 +119,17 @@ export default async function AnnoncesSearchPage({
                 <span className="text-muted-2"> · {total} au total</span>
               )}
             </>
-          ) : (
-            <span className="text-muted-2">Remplissez les critères ci-dessus pour lancer une recherche.</span>
           )}
         </p>
       </div>
 
-      {!hasSearch ? (
-        <div className="card mt-6 p-12 text-center">
-          <p className="headline text-2xl text-paper">Lancez votre recherche</p>
-          <p className="mt-2 text-muted">
-            Sélectionnez au moins un critère (catégorie, ligue, district, ville, date…) puis cliquez sur{" "}
-            <span className="text-accent">Rechercher</span>.
-          </p>
-        </div>
-      ) : annonces.length === 0 ? (
+      {isDefault ? (
+        <p className="mt-2 text-sm text-muted-2">
+          Utilisez les filtres ci-dessus pour affiner la recherche.
+        </p>
+      ) : null}
+
+      {annonces.length === 0 ? (
         <AucuneAnnonceFallback
           params={baseParams}
           currentClubId={currentClub?.id}
@@ -151,6 +161,7 @@ export default async function AnnoncesSearchPage({
               arbitre: params.arbitre,
               ligue: params.ligue,
               district: params.district,
+              departement: params.departement,
               ville: params.ville,
               latitude: params.latitude,
               longitude: params.longitude,
@@ -184,6 +195,7 @@ async function AucuneAnnonceFallback({
         niveau: params.niveau,
         ligue: params.ligue,
         district: params.district,
+        departement: params.departement,
         latitude: params.latitude,
         longitude: params.longitude,
         rayon: params.rayon,

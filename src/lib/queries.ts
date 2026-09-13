@@ -13,6 +13,7 @@ export interface SearchParams {
   arbitre?: string; // "1" => only arbitre dispo
   ligue?: string;
   district?: string;
+  departement?: string;
   ville?: string;
   latitude?: string;
   longitude?: string;
@@ -34,6 +35,7 @@ const PUBLIC_CLUB_SELECT = {
   ville: true,
   codePostal: true,
   district: true,
+  departement: true,
   ligue: true,
   logoUrl: true,
   statutVerification: true,
@@ -82,6 +84,7 @@ async function _searchAnnoncesImpl(params: SearchParams) {
   const clubFilter: Record<string, unknown> = {};
   if (params.ligue) clubFilter.ligue = params.ligue;
   if (params.district) clubFilter.district = params.district;
+  if (params.departement) clubFilter.departement = params.departement;
 
   // Bounding-box approximative avant le filtre haversine pour reduire le volume DB.
   const lat = parseFloat(params.latitude ?? "");
@@ -164,6 +167,56 @@ export const fetchAnnoncesLanding = unstable_cache(_fetchAnnoncesLandingImpl, ["
   tags: ["annonces", "landing"],
 });
 
+// Annonces par défaut pour la page /annonces quand aucun filtre n'est actif :
+// les prochains matchs ouverts, triés par date croissante. Utilise le cache serveur
+// partagé pour ne pas charger la DB à chaque visiteur.
+const DEFAULT_ANNONCES_LIMIT = 15;
+
+async function _fetchDefaultAnnoncesImpl() {
+  return prisma.annonce.findMany({
+    where: { statut: "ouvert", date: { gte: todayISO() } },
+    include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
+    orderBy: [{ date: "asc" }, { heure: "asc" }],
+    take: DEFAULT_ANNONCES_LIMIT,
+  });
+}
+
+export const fetchDefaultAnnonces = unstable_cache(_fetchDefaultAnnoncesImpl, ["annonces-default"], {
+  revalidate: 60,
+  tags: ["annonces"],
+});
+
+// Compteurs de preuve sociale pour la landing page. Cache long pour limiter la
+// charge : un seul visiteur sur 5 minutes déclenche le count().
+function debutEtFinMoisCourant() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const debut = `${y}-${String(m).padStart(2, "0")}-01`;
+  const fin = `${y}-${String(m).padStart(2, "0")}-${new Date(y, m, 0).getDate()}`;
+  return { debut, fin };
+}
+
+async function _fetchLandingStatsImpl() {
+  const { debut, fin } = debutEtFinMoisCourant();
+  const [clubsValides, annoncesOuvertes, matchsConfirmesMois] = await Promise.all([
+    prisma.club.count({ where: { role: "club", statutVerification: "valide" } }),
+    prisma.annonce.count({ where: { statut: "ouvert", date: { gte: todayISO() } } }),
+    prisma.annonce.count({
+      where: {
+        statut: "confirme",
+        date: { gte: debut, lte: fin },
+      },
+    }),
+  ]);
+  return { clubsValides, annoncesOuvertes, matchsConfirmesMois };
+}
+
+export const fetchLandingStats = unstable_cache(_fetchLandingStatsImpl, ["landing-stats"], {
+  revalidate: PUBLIC_CACHE_REVALIDATE,
+  tags: ["annonces", "clubs", "matchs-confirmes"],
+});
+
 // Matchs confirmés pour la page publique (avec filtres ligue/district).
 async function _fetchMatchsConfirmesImpl(ligue: string, district: string) {
   const where: Record<string, unknown> = {
@@ -188,6 +241,7 @@ async function _fetchMatchsConfirmesImpl(ligue: string, district: string) {
           nom: true,
           ville: true,
           district: true,
+          departement: true,
           ligue: true,
           logoUrl: true,
         },
@@ -236,6 +290,72 @@ export async function fetchMyEquipes(clubId: string) {
   });
 }
 
+// Favoris d'un club avec les données de cible (annonces ouvertes à venir + clubs validés).
+// Pas de cache : la donnée change au clic et est privée au club.
+async function _fetchSimilarAnnoncesImpl(annonceId: string, categorie: string, limit = 3) {
+  return prisma.annonce.findMany({
+    where: {
+      id: { not: annonceId },
+      statut: "ouvert",
+      date: { gte: todayISO() },
+      equipe: { categorie },
+    },
+    include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
+    orderBy: { date: "asc" },
+    take: limit,
+  });
+}
+
+export const fetchSimilarAnnonces = unstable_cache(
+  (annonceId: string, categorie: string, limit?: number) => _fetchSimilarAnnoncesImpl(annonceId, categorie, limit),
+  ["similar-annonces"],
+  { revalidate: 60, tags: ["annonces"] },
+);
+
+export async function fetchAvisForClub(clubId: string) {
+  return prisma.avis.findMany({
+    where: { cibleClubId: clubId },
+    select: { note: true, commentaire: true, createdAt: true, auteurClub: { select: { nom: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
+
+export async function fetchMyFavorisWithTargets(clubId: string) {
+  const favoris = await prisma.favori.findMany({
+    where: { clubId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const annonceIds = favoris.filter((f) => f.type === "annonce").map((f) => f.cibleId);
+  const clubIds = favoris.filter((f) => f.type === "club").map((f) => f.cibleId);
+
+  const [annonces, clubs] = await Promise.all([
+    prisma.annonce.findMany({
+      where: { id: { in: annonceIds }, statut: "ouvert", date: { gte: todayISO() } },
+      include: { equipe: { include: { club: { select: PUBLIC_CLUB_SELECT } } }, club: { select: PUBLIC_CLUB_SELECT } },
+      orderBy: { date: "asc" },
+    }),
+    prisma.club.findMany({
+      where: { id: { in: clubIds }, role: "club", statutVerification: "valide" },
+      select: CLUB_SEARCH_SELECT,
+      orderBy: { nom: "asc" },
+    }),
+  ]);
+
+  const annoncesById = new Map(annonces.map((a) => [a.id, a]));
+  const clubsById = new Map(clubs.map((c) => [c.id, c]));
+
+  return {
+    annonces: annonceIds
+      .map((id) => annoncesById.get(id))
+      .filter((a): a is NonNullable<typeof a> => Boolean(a)),
+    clubs: clubIds
+      .map((id) => clubsById.get(id))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c)),
+  };
+}
+
 export async function fetchPendingClubs(limit = DEFAULT_PAGE_LIMIT, skip = 0) {
   return prisma.club.findMany({
     where: { role: "club", statutVerification: "en_attente" },
@@ -248,6 +368,7 @@ export async function fetchPendingClubs(limit = DEFAULT_PAGE_LIMIT, skip = 0) {
       ville: true,
       codePostal: true,
       district: true,
+      departement: true,
       ligue: true,
       telephone: true,
       email: true,
@@ -271,10 +392,13 @@ export async function fetchClubProfile(id: string) {
       ville: true,
       codePostal: true,
       district: true,
+      departement: true,
       ligue: true,
       logoUrl: true,
       role: true,
       statutVerification: true,
+      description: true,
+      siteWeb: true,
       createdAt: true,
       equipes: { orderBy: { categorie: "asc" }, take: DEFAULT_DASHBOARD_LIMIT },
       annonces: {
@@ -299,6 +423,7 @@ const CLUB_SEARCH_SELECT = {
   ville: true,
   codePostal: true,
   district: true,
+  departement: true,
   ligue: true,
   logoUrl: true,
   latitude: true,
@@ -314,6 +439,7 @@ export interface ClubSearchParams {
   niveau?: string;
   ligue?: string;
   district?: string;
+  departement?: string;
   ville?: string;
   latitude?: string;
   longitude?: string;
@@ -335,6 +461,7 @@ async function _searchClubsImpl(params: ClubSearchParams) {
 
   if (params.ligue) where.ligue = params.ligue;
   if (params.district) where.district = params.district;
+  if (params.departement) where.departement = params.departement;
   if (params.excludeClubId) where.id = { not: params.excludeClubId };
 
   // Filtre géographique (bounding-box approximative).

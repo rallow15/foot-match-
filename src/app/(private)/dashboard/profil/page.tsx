@@ -29,9 +29,9 @@ export default async function ProfilPage() {
               <StatutVerifBadge statut={club.statutVerification} />
             </div>
             <p className="mt-1 text-sm text-muted">
-              📍 {club.district} · {club.ville} ({club.codePostal})
+              📍 {club.departement ? `${club.departement} · ` : ""}{club.ville} ({club.codePostal})
             </p>
-            <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue}</p>
+            <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue} · {club.district}</p>
           </div>
         </div>
         <div className="mt-5 border-t border-line pt-4">

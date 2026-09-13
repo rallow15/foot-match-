@@ -17,6 +17,7 @@ model Club {
   codePostal           String
   latitude             Float
   longitude            Float
+  departement          String?
   ligue                String
   district             String
   telephone            String
@@ -36,10 +37,21 @@ model Club {
   derniereActiviteAt   DateTime   @default(now())
   createdAt            DateTime   @default(now())
 
+  // Profil public enrichi — optionnel, affiché sur le profil club.
+  description          String?
+  siteWeb              String?
+  // Onboarding post-validation : null = jamais vu par le club.
+  onboardingSeenAt     DateTime?
+
   equipes              Equipe[]
   sessions             Session[]
   annonces             Annonce[]   @relation("AnnoncePar")
   passwordResetTokens  PasswordResetToken[]
+  favoris              Favori[]
+  alertes              Alerte[]
+  avisRecus            Avis[]      @relation("AvisCible")
+  avisDonnes           Avis[]      @relation("AvisAuteur")
+  signalements         Signalement[]
 
   @@index([statutVerification])
   @@index([email])
@@ -76,6 +88,7 @@ model Annonce {
   note              String?
   adversaireNom     String?
   statut            String   @default("ouvert")
+  avisEmailSentAt   DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -116,4 +129,72 @@ model RateLimit {
   createdAt DateTime @default(now())
 
   @@index([resetAt])
+}
+
+// Favoris d'un club : annonces ou profils clubs sauvegardés pour y revenir.
+model Favori {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  type      String   // annonce | club
+  cibleId   String
+  createdAt DateTime @default(now())
+
+  @@unique([clubId, type, cibleId])
+  @@index([clubId])
+  @@index([cibleId])
+}
+
+// Signalements d'annonces par les clubs connectés (spam / contenu inapproprié).
+model Signalement {
+  id        String   @id @default(cuid())
+  annonceId String
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  motif     String
+  statut    String   @default("ouvert")
+  createdAt DateTime @default(now())
+
+  @@index([annonceId])
+  @@index([clubId])
+  @@index([statut])
+}
+
+// Avis laissés après un match confirmé : note + commentaire optionnel.
+model Avis {
+  id           String   @id @default(cuid())
+  annonceId    String
+  auteurClubId String
+  auteurClub   Club     @relation("AvisAuteur", fields: [auteurClubId], references: [id], onDelete: Cascade)
+  cibleClubId  String
+  cibleClub    Club     @relation("AvisCible", fields: [cibleClubId], references: [id], onDelete: Cascade)
+  note         Int
+  commentaire  String?
+  createdAt    DateTime @default(now())
+
+  @@index([annonceId])
+  @@index([auteurClubId])
+  @@index([cibleClubId])
+  @@unique([annonceId, auteurClubId])
+}
+
+// Alertes email : un club s'abonne à une recherche et reçoit un digest quotidien.
+model Alerte {
+  id         String   @id @default(cuid())
+  clubId     String
+  club       Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  categorie  String?
+  ligue       String?
+  district    String?
+  departement String?
+  rayonKm     Int?
+  centreLat  Float?
+  centreLng  Float?
+  lastSentAt DateTime?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([clubId])
+  @@index([active])
+  @@index([active, lastSentAt])
 }

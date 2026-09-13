@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
-import { formatDateLongFR, relTime } from "@/lib/utils";
+import { formatDateLongFR, relTime, isNouveau } from "@/lib/utils";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "./Badges";
 import { ClubAvatar } from "./ClubAvatar";
 
@@ -17,13 +17,14 @@ interface AnnonceCardProps {
     niveauSouhaite: string | null;
     note: string | null;
     statut: string;
-    createdAt: Date;
+    createdAt: Date | string;
     equipe: { categorie: string; niveau: string | null };
     club: {
       id: string;
       nom: string;
       ville: string;
       district: string;
+      departement?: string | null;
       ligue: string;
       statutVerification: string;
       logoUrl: string | null;
@@ -36,6 +37,7 @@ export function AnnonceCard({ annonce, distanceKm = null }: AnnonceCardProps) {
   const cat = getCategorie(annonce.equipe.categorie);
   const dom = annonce.domicileExterieur as keyof typeof DOM_EXT_LABEL;
   const verified = annonce.club.statutVerification === "valide";
+  const nouveau = isNouveau(annonce.createdAt);
 
   return (
     <article className="card card-hover flex flex-col reveal">
@@ -51,7 +53,10 @@ export function AnnonceCard({ annonce, distanceKm = null }: AnnonceCardProps) {
               </div>
             )}
           </div>
-          <StatutAnnonceBadge statut={annonce.statut} />
+          <div className="flex flex-col items-end gap-2">
+            {nouveau && <span className="chip-accent text-[10px]">NOUVEAU</span>}
+            <StatutAnnonceBadge statut={annonce.statut} />
+          </div>
         </div>
       </div>
 
@@ -83,7 +88,7 @@ export function AnnonceCard({ annonce, distanceKm = null }: AnnonceCardProps) {
         </div>
 
         <p className="text-xs text-muted">
-          📍 {annonce.club.district} · {annonce.club.ville}
+          📍 {annonce.club.departement ? `${annonce.club.departement} · ` : ""}{annonce.club.ville}
           {distanceKm != null && !Number.isNaN(distanceKm) && (
             <span className="text-muted-2"> · à {Math.round(distanceKm)} km</span>
           )}

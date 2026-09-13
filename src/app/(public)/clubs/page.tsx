@@ -15,7 +15,7 @@ export const metadata = {
 
 export const revalidate = 60;
 
-const SEARCH_FIELDS = ["categorie", "niveau", "ligue", "district", "ville"];
+const SEARCH_FIELDS = ["categorie", "niveau", "ligue", "district", "departement", "ville"];
 
 export default async function ClubsSearchPage({
   searchParams,
@@ -32,6 +32,7 @@ export default async function ClubsSearchPage({
     niveau: get("niveau"),
     ligue: get("ligue"),
     district: get("district"),
+    departement: get("departement"),
     ville: get("ville"),
     latitude: get("latitude"),
     longitude: get("longitude"),
@@ -72,6 +73,7 @@ export default async function ClubsSearchPage({
             niveau: params.niveau,
             ligue: params.ligue,
             district: params.district,
+            departement: params.departement,
             ville: params.ville,
             latitude: params.latitude,
             longitude: params.longitude,
@@ -102,7 +104,7 @@ export default async function ClubsSearchPage({
         <div className="card mt-6 p-12 text-center">
           <p className="headline text-2xl text-paper">Lancez votre recherche</p>
           <p className="mt-2 text-muted">
-            Choisissez une catégorie d&apos;équipe (et optionnellement un district ou une ville) puis cliquez sur{" "}
+            Choisissez une catégorie d&apos;équipe (et optionnellement un district, un département ou une ville) puis cliquez sur{" "}
             <span className="text-accent">Rechercher des clubs</span>.
           </p>
         </div>
@@ -137,6 +139,7 @@ export default async function ClubsSearchPage({
               niveau: params.niveau,
               ligue: params.ligue,
               district: params.district,
+              departement: params.departement,
               ville: params.ville,
               latitude: params.latitude,
               longitude: params.longitude,

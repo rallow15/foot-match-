@@ -1,8 +1,3 @@
-// Prisma schema — Plateforme de matchs amicaux entre clubs amateurs
-// Postgres (Supabase) en production ET en dev (mêmes migrations).
-// Note: pas d'enums natifs utilisés — les valeurs sont validées dans le code
-// (src/lib/referential.ts), ce qui garde le schéma portable.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,62 +8,59 @@ datasource db {
 }
 
 model Club {
-  id                   String     @id @default(cuid())
-  nom                  String
-  ville                String
-  codePostal           String
-  latitude             Float
-  longitude            Float
-  ligue                String   // Ligue régionale FFF (ex. "Auvergne-Rhône-Alpes")
-  district             String   // District / sous-ligue FFF (ex. "Lyon-Rhône")
-  telephone            String
-  email                String     @unique
-  logoUrl              String?
-  licenceFichierUrl    String?
-  // en_attente | valide | refuse
-  statutVerification   String     @default("en_attente")
-  // reason text shown to club when refused
-  refusMotif           String?
-  // null si le compte a été créé via OAuth (Google/Apple) ; conservé si auth email/mdp
-  passwordHash         String?
-  // distinguishes a platform admin from a regular club
-  role                 String     @default("club") // club | admin
-  // OAuth identity (si création via SSO). Permet la reconnexion sans mot de passe.
-  oauthProvider        String?
-  oauthProviderId      String?
-  // Nom / image fournis par le provider (Apple ne donne le nom qu'à la première connexion)
-  oauthName            String?
-  oauthPicture         String?
-  // Anti brute-force login : compteur d'échecs + verrou temporaire. L'état est
-  // en base (pas en mémoire), donc il survit aux redémarrages et aux instances
-  // multiples — complète rate-limit.ts qui reste mono-instance.
-  failedLoginAttempts  Int        @default(0)
-  lockedUntil          DateTime?
-  derniereActiviteAt   DateTime   @default(now())
-  createdAt            DateTime   @default(now())
+  id                  String               @id @default(cuid())
+  nom                 String
+  ville               String
+  codePostal          String
+  latitude            Float
+  longitude           Float
+  departement         String?
+  ligue               String
+  district            String
+  telephone           String
+  email               String               @unique
+  logoUrl             String?
+  licenceFichierUrl   String?
+  statutVerification  String               @default("en_attente")
+  refusMotif          String?
+  passwordHash        String?
+  role                String               @default("club")
+  derniereActiviteAt  DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  oauthName           String?
+  oauthPicture        String?
+  oauthProvider       String?
+  oauthProviderId     String?
+  description         String?              @db.VarChar(1000)
+  onboardingSeenAt    DateTime?
+  siteWeb             String?
+  alertes             Alerte[]
+  annonces            Annonce[]            @relation("AnnoncePar")
+  avisDonnes          Avis[]               @relation("AvisAuteur")
+  avisRecus           Avis[]               @relation("AvisCible")
+  equipes             Equipe[]
+  favoris             Favori[]
+  passwordResetTokens PasswordResetToken[]
+  sessions            Session[]
+  signalements        Signalement[]
 
-  equipes              Equipe[]
-  sessions             Session[]
-  annonces             Annonce[]   @relation("AnnoncePar")
-  passwordResetTokens  PasswordResetToken[]
-
+  @@unique([oauthProvider, oauthProviderId])
   @@index([statutVerification])
   @@index([email])
   @@index([ligue, district])
+  @@index([departement])
   @@index([statutVerification, role])
-  @@unique([oauthProvider, oauthProviderId])
 }
 
 model Equipe {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   clubId    String
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  // referential: see CATEGORIES in src/lib/referential.ts
   categorie String
-  // nullable: see NIVEAUX_BY_CATEGORIE
   niveau    String?
-
   annonces  Annonce[]
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@index([clubId])
   @@index([categorie])
@@ -76,29 +68,25 @@ model Equipe {
 }
 
 model Annonce {
-  id              String   @id @default(cuid())
-  equipeId        String
-  equipe          Equipe   @relation(fields: [equipeId], references: [id], onDelete: Cascade)
-  clubId          String
-  club            Club     @relation("AnnoncePar", fields: [clubId], references: [id], onDelete: Cascade)
-  // ISO date yyyy-mm-dd
-  date            String
-  // HH:mm or plage "14:00-16:00"
-  heure           String
-  // domicile | exterieur | indifferent
+  id                String    @id @default(cuid())
+  equipeId          String
+  clubId            String
+  date              String
+  heure             String
   domicileExterieur String
-  stadeDispo      Boolean  @default(false)
-  stadeNom        String?
-  stadeVille      String?
-  arbitreDispo    Boolean  @default(false)
-  niveauSouhaite  String?
-  note            String?
-  // Nom du club adverse, renseigné par l'annonceur lors de la confirmation.
-  adversaireNom   String?
-  // ouvert | confirme | annule
-  statut          String   @default("ouvert")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  stadeDispo        Boolean   @default(false)
+  stadeNom          String?
+  stadeVille        String?
+  arbitreDispo      Boolean   @default(false)
+  niveauSouhaite    String?
+  note              String?
+  statut            String    @default("ouvert")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  adversaireNom     String?
+  avisEmailSentAt   DateTime?
+  club              Club      @relation("AnnoncePar", fields: [clubId], references: [id], onDelete: Cascade)
+  equipe            Equipe    @relation(fields: [equipeId], references: [id], onDelete: Cascade)
 
   @@index([equipeId])
   @@index([clubId])
@@ -108,49 +96,99 @@ model Annonce {
   @@index([statut, date, clubId])
 }
 
-
 model Session {
   id        String   @id @default(cuid())
   clubId    String
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  // Hash SHA-256 du token (le cookie porte le token clair, la base n'en stocke
-  // que le hash : une fuite de base ne permet pas de détournement de session).
   tokenHash String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@index([clubId])
 }
-
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   clubId    String
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  // Hash SHA-256 du token (le lien email porte le token clair, la base n'en
-  // stocke que le hash : une fuite de base ne permet pas de réinitialiser un mot
-  // de passe). Même stratégie que Session.tokenHash.
-  tokenHash String   @unique
-  expiresAt DateTime              // now + 15 min
-  // Marqué à la consommation (usage unique) ; null tant que non utilisé.
+  tokenHash String    @unique
+  expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@index([clubId])
 }
 
-// Compteur de rate limiting par IP, partagé entre instances (Postgres).
-// Remplace le Map in-memory qui n'était valable qu'en mono-instance : sur
-// Fluid Compute / serverless, chaque instance aurait eu son propre compteur et
-// un attaquant répartissant ses requêtes aurait contourné les seuils.
 model RateLimit {
   id        String   @id @default(cuid())
-  // Clé = `${action}:${ip}` — un compteur par action et par IP.
   key       String   @unique
   count     Int      @default(0)
   resetAt   DateTime
   createdAt DateTime @default(now())
 
-  // Nettoyage périodique des fenêtres expirées.
   @@index([resetAt])
+}
+
+model Favori {
+  id        String   @id @default(cuid())
+  clubId    String
+  type      String
+  cibleId   String
+  createdAt DateTime @default(now())
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, type, cibleId])
+  @@index([clubId])
+  @@index([cibleId])
+}
+
+model Signalement {
+  id        String   @id @default(cuid())
+  annonceId String
+  clubId    String
+  motif     String   @db.VarChar(500)
+  statut    String   @default("ouvert")
+  createdAt DateTime @default(now())
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([annonceId])
+  @@index([clubId])
+  @@index([statut])
+}
+
+model Avis {
+  id           String   @id @default(cuid())
+  annonceId    String
+  auteurClubId String
+  cibleClubId  String
+  note         Int
+  commentaire  String?  @db.VarChar(500)
+  createdAt    DateTime @default(now())
+  auteurClub   Club     @relation("AvisAuteur", fields: [auteurClubId], references: [id], onDelete: Cascade)
+  cibleClub    Club     @relation("AvisCible", fields: [cibleClubId], references: [id], onDelete: Cascade)
+
+  @@unique([annonceId, auteurClubId])
+  @@index([annonceId])
+  @@index([auteurClubId])
+  @@index([cibleClubId])
+}
+
+model Alerte {
+  id         String    @id @default(cuid())
+  clubId     String
+  categorie  String?
+  ligue       String?
+  district    String?
+  departement String?
+  rayonKm     Int?
+  centreLat  Float?
+  centreLng  Float?
+  lastSentAt DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  club       Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId])
+  @@index([active])
+  @@index([active, lastSentAt])
 }

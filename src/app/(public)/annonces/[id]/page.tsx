@@ -1,14 +1,39 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchAnnonceByIdCached as fetchAnnonceById } from "@/lib/queries";
+import {
+  fetchAnnonceByIdCached as fetchAnnonceById,
+  fetchSimilarAnnonces,
+} from "@/lib/queries";
 import { getCurrentClub } from "@/lib/auth";
 import { getCategorie, DOM_EXT_LABEL, NIVEAU_LABEL } from "@/lib/referential";
-import { formatDateLongFR, relTime, todayISO } from "@/lib/utils";
+
+import { formatDateLongFR, relTime, todayISO, isNouveau } from "@/lib/utils";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 import { ClubAvatar } from "@/components/ClubAvatar";
+import { AnnonceCard } from "@/components/AnnonceCard";
 import { ContactForm } from "@/components/ContactForm";
+import { FavoriButton } from "@/components/FavoriButton";
+import { SignalementForm } from "@/components/SignalementForm";
+import { prisma } from "@/lib/db";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const annonce = await fetchAnnonceById(id);
+  if (!annonce) return { title: "Annonce introuvable — Matchs Amicaux" };
+  const cat = getCategorie(annonce.equipe.categorie);
+  const title = `${cat?.label ?? annonce.equipe.categorie} · ${formatDateLongFR(annonce.date)} · ${annonce.club.nom}`;
+  return {
+    title,
+    description: `Match amical ${cat?.label ?? ""} proposé par ${annonce.club.nom} (${annonce.club.ville}). Contactez le club pour organiser le match.`,
+  };
+}
 
 export default async function AnnonceDetailPage({
   params,
@@ -30,6 +55,15 @@ export default async function AnnonceDetailPage({
   const canContact =
     !!club && club.role === "club" && club.statutVerification === "valide" && !isOwn && annonce.statut === "ouvert";
 
+  const isFavori = club && club.role === "club" && !isOwn
+    ? await prisma.favori.findUnique({
+        where: { clubId_type_cibleId: { clubId: club.id, type: "annonce", cibleId: annonce.id } },
+        select: { id: true },
+      }).then(Boolean)
+    : false;
+
+  const similar = await fetchSimilarAnnonces(annonce.id, annonce.equipe.categorie, 3);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <Link href="/annonces" className="text-sm text-muted hover:text-paper">← Retour aux annonces</Link>
@@ -38,11 +72,19 @@ export default async function AnnonceDetailPage({
         {/* Détail */}
         <article className="card overflow-hidden">
           <div className="border-b border-line bg-gradient-to-br from-ink-3 to-ink-2 px-6 py-6">
-            <p className="eyebrow text-accent">{cat?.groupe === "jeunes" ? "Jeunes" : "Adultes / Loisirs"}</p>
-            <h1 className="headline mt-1 text-5xl text-paper">{cat?.label}</h1>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {annonce.equipe.niveau && <NiveauBadge niveau={annonce.equipe.niveau} />}
-              <StatutAnnonceBadge statut={annonce.statut} />
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="eyebrow text-accent">{cat?.groupe === "jeunes" ? "Jeunes" : "Adultes / Loisirs"}</p>
+                <h1 className="headline mt-1 text-5xl text-paper">{cat?.label}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {annonce.equipe.niveau && <NiveauBadge niveau={annonce.equipe.niveau} />}
+                  {isNouveau(annonce.createdAt) && <span className="chip-accent text-[10px]">NOUVEAU</span>}
+                  <StatutAnnonceBadge statut={annonce.statut} />
+                </div>
+              </div>
+              {club && club.role === "club" && !isOwn && (
+                <FavoriButton type="annonce" cibleId={annonce.id} initial={isFavori} />
+              )}
             </div>
           </div>
 
@@ -78,11 +120,14 @@ export default async function AnnonceDetailPage({
               </div>
             </Link>
             <p className="mt-2 text-sm text-muted">
-              📍 {annonce.club.district} · {annonce.club.ville} ({annonce.club.codePostal})
+              📍 {annonce.club.departement ? `${annonce.club.departement} · ` : ""}{annonce.club.ville} ({annonce.club.codePostal})
             </p>
-            <p className="mt-0.5 text-xs text-muted-2">Ligue {annonce.club.ligue}</p>
+            <p className="mt-0.5 text-xs text-muted-2">Ligue {annonce.club.ligue} · {annonce.club.district}</p>
             <p className="mt-1 text-xs text-muted-2">Publié {relTime(annonce.createdAt)}</p>
           </div>
+          {club && club.role === "club" && !isOwn && (
+            <SignalementForm annonceId={annonce.id} />
+          )}
         </article>
 
         {/* Panneau contact */}
@@ -122,6 +167,20 @@ export default async function AnnonceDetailPage({
           )}
         </aside>
       </div>
+
+      {similar.length > 0 && (
+        <section className="mt-12">
+          <p className="eyebrow text-accent">Vous pourriez aimer</p>
+          <h2 className="headline mt-2 text-2xl text-paper">Autres annonces {getCategorie(annonce.equipe.categorie)?.label}</h2>
+          <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+            {similar.map((a) => (
+              <li key={a.id}>
+                <AnnonceCard annonce={a} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

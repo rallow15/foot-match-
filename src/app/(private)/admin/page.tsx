@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentClub } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { fetchPendingClubs } from "@/lib/queries";
 import { relTime } from "@/lib/utils";
 import { adminDeleteClubAction, adminRefuseAction, adminValidateAction } from "@/app/actions";
 import { DeleteClubButton } from "@/components/DeleteClubButton";
@@ -12,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] | undefined }>;
+  searchParams: Promise<{ page?: string | string[] | undefined; filter?: string | string[] }>;
 }) {
   const me = await getCurrentClub();
   if (!me) redirect("/login");
@@ -20,18 +19,49 @@ export default async function AdminPage({
 
   const sp = await searchParams;
   const page = Math.max(1, parseInt(typeof sp.page === "string" ? sp.page : "1", 10) || 1);
+  const showOldOnly = sp.filter === "old";
   const pageSize = 50;
   const skip = (page - 1) * pageSize;
 
+  const oldThreshold = new Date();
+  oldThreshold.setDate(oldThreshold.getDate() - 3);
+
+  const pendingWhere = {
+    role: "club",
+    statutVerification: "en_attente",
+    ...(showOldOnly ? { createdAt: { lt: oldThreshold } } : {}),
+  };
+
   const [pending, recent, totalPending] = await Promise.all([
-    fetchPendingClubs(pageSize, skip),
+    prisma.club.findMany({
+      where: pendingWhere,
+      orderBy: { createdAt: "asc" },
+      take: pageSize,
+      skip,
+      select: {
+        id: true,
+        nom: true,
+        ville: true,
+        codePostal: true,
+        district: true,
+        departement: true,
+        ligue: true,
+        telephone: true,
+        email: true,
+        logoUrl: true,
+        licenceFichierUrl: true,
+        statutVerification: true,
+        refusMotif: true,
+        createdAt: true,
+      },
+    }),
     prisma.club.findMany({
       where: { role: "club", statutVerification: { in: ["valide", "refuse"] } },
       orderBy: { derniereActiviteAt: "desc" },
       take: 8,
       select: { id: true, nom: true, statutVerification: true, refusMotif: true, derniereActiviteAt: true },
     }),
-    prisma.club.count({ where: { role: "club", statutVerification: "en_attente" } }),
+    prisma.club.count({ where: pendingWhere }),
   ]);
 
   const totalPages = Math.ceil(totalPending / pageSize);
@@ -49,7 +79,17 @@ export default async function AdminPage({
 
       {/* File d'attente */}
       <section className="mt-10">
-        <h2 className="headline text-2xl text-paper">File d&apos;attente</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-4">
+          <h2 className="headline text-2xl text-paper">File d&apos;attente</h2>
+          <div className="flex gap-2">
+            <a href="/admin" className={`btn-xs-ghost ${!showOldOnly ? "border-accent text-accent" : ""}`}>
+              Tous
+            </a>
+            <a href="/admin?filter=old" className={`btn-xs-ghost ${showOldOnly ? "border-accent text-accent" : ""}`}>
+              +3 jours
+            </a>
+          </div>
+        </div>
 
         {pending.length === 0 ? (
           <p className="card mt-4 p-6 text-sm text-muted">
@@ -66,9 +106,9 @@ export default async function AdminPage({
                       <StatutVerifBadge statut={c.statutVerification} />
                     </div>
                     <p className="mt-1 text-sm text-muted">
-                      📍 {c.ville} ({c.codePostal}) · {c.telephone} · {c.email}
+                      📍 {c.departement ? `${c.departement} · ` : ""}{c.ville} ({c.codePostal}) · {c.telephone} · {c.email}
                     </p>
-                    <p className="mt-1 text-xs text-muted-2">Inscrit {relTime(c.createdAt)}</p>
+                    <p className="mt-1 text-xs text-muted-2">Ligue {c.ligue} · {c.district} · Inscrit {relTime(c.createdAt)}</p>
                   </div>
 
                   {c.licenceFichierUrl?.startsWith("/api/uploads/") && (

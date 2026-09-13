@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CATEGORIES, niveauxForCategorie } from "@/lib/referential";
 import { LIGUES, districtsForLigue } from "@/lib/ligues";
+import { DEPARTEMENT_ENTRIES, isValidDepartement } from "@/lib/departements";
 import { VilleAutocomplete } from "./VilleAutocomplete";
 
 export interface ClubFilterInitial {
@@ -11,6 +12,7 @@ export interface ClubFilterInitial {
   niveau?: string;
   ligue?: string;
   district?: string;
+  departement?: string;
   ville?: string;
   latitude?: string;
   longitude?: string;
@@ -25,6 +27,9 @@ export function ClubSearchFilters({ initial }: { initial: ClubFilterInitial }) {
   const [ligue, setLigue] = useState(initial.ligue ?? "");
   const [district, setDistrict] = useState(initial.district ?? "");
   const districts = ligue ? districtsForLigue(ligue) : [];
+
+  const safeDepartement = isValidDepartement(initial.departement) ? initial.departement! : "";
+  const [departement, setDepartement] = useState(safeDepartement);
 
   return (
     <form method="get" action="/clubs" className="card mt-8 grid gap-5 p-5 md:grid-cols-2 lg:grid-cols-3">
@@ -104,6 +109,22 @@ export function ClubSearchFilters({ initial }: { initial: ClubFilterInitial }) {
           <option value="">Tous les districts</option>
           {districts.map((d) => (
             <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="departement">Département</label>
+        <select
+          id="departement"
+          name="departement"
+          className="input"
+          value={departement}
+          onChange={(e) => setDepartement(e.target.value)}
+        >
+          <option value="">Tous les départements</option>
+          {DEPARTEMENT_ENTRIES.map((d) => (
+            <option key={d.numero} value={d.numero}>{d.numero} - {d.nom}</option>
           ))}
         </select>
       </div>

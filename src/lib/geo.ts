@@ -20,11 +20,18 @@ export interface GeoResult {
   label: string;
   ville: string;
   codePostal: string;
+  departement?: string;
   latitude: number;
   longitude: number;
 }
 
 const GEO_TIMEOUT_MS = 5000;
+
+function extractDepartement(context?: string): string | undefined {
+  if (!context) return undefined;
+  const parts = context.split(", ").map((s) => s.trim());
+  return parts.find((p) => /^\d{1,3}(\s+[A-Za-zÀ-ÖØ-öø-ÿ-]+)?$/.test(p));
+}
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response | null> {
   try {
@@ -38,6 +45,27 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+function mapGeoFeature(
+  feat: {
+    properties: {
+      label: string;
+      name: string;
+      postcode: string;
+      context?: string;
+    };
+    geometry: { coordinates: [number, number] };
+  },
+): GeoResult {
+  return {
+    label: feat.properties.label,
+    ville: feat.properties.name,
+    codePostal: feat.properties.postcode,
+    departement: extractDepartement(feat.properties.context),
+    latitude: feat.geometry.coordinates[1],
+    longitude: feat.geometry.coordinates[0],
+  };
+}
+
 // Géocode une ville/code postal via l'API adresse (BAN). Côté serveur.
 export async function geocode(q: string): Promise<GeoResult | null> {
   const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(
@@ -48,19 +76,18 @@ export async function geocode(q: string): Promise<GeoResult | null> {
     if (!res || !res.ok) return null;
     const data = (await res.json()) as {
       features?: Array<{
-        properties: { label: string; name: string; postcode: string };
+        properties: {
+          label: string;
+          name: string;
+          postcode: string;
+          context?: string;
+        };
         geometry: { coordinates: [number, number] };
       }>;
     };
     const feat = data.features?.[0];
     if (!feat) return null;
-    return {
-      label: feat.properties.label,
-      ville: feat.properties.name,
-      codePostal: feat.properties.postcode,
-      latitude: feat.geometry.coordinates[1],
-      longitude: feat.geometry.coordinates[0],
-    };
+    return mapGeoFeature(feat);
   } catch {
     return null;
   }
@@ -77,17 +104,16 @@ export async function autocompleteVilles(q: string): Promise<GeoResult[]> {
     if (!res || !res.ok) return [];
     const data = (await res.json()) as {
       features?: Array<{
-        properties: { label: string; name: string; postcode: string };
+        properties: {
+          label: string;
+          name: string;
+          postcode: string;
+          context?: string;
+        };
         geometry: { coordinates: [number, number] };
       }>;
     };
-    return (data.features ?? []).map((feat) => ({
-      label: feat.properties.label,
-      ville: feat.properties.name,
-      codePostal: feat.properties.postcode,
-      latitude: feat.geometry.coordinates[1],
-      longitude: feat.geometry.coordinates[0],
-    }));
+    return (data.features ?? []).map((feat) => mapGeoFeature(feat));
   } catch {
     return [];
   }

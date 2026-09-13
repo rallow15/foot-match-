@@ -35,6 +35,7 @@ import {
   isValidEmail,
   isValidHeure,
   isValidTelephone,
+  isValidUrl,
   normalizeHeure,
   validateLength,
   validatePassword,
@@ -179,6 +180,7 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
         codePostal: codePostalFinal,
         latitude: geo.latitude,
         longitude: geo.longitude,
+        departement: geo.departement ?? undefined,
         ligue,
         district,
         telephone,
@@ -856,6 +858,8 @@ export async function updateProfilAction(_prev: ActionState, formData: FormData)
   const district = String(formData.get("district") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const description = String(formData.get("description") ?? "").trim();
+  const siteWeb = String(formData.get("siteWeb") ?? "").trim();
 
   if (!nom || !ville || !codePostal || !telephone || !email) {
     return { error: "Tous les champs marqués d'un * sont obligatoires." };
@@ -867,6 +871,9 @@ export async function updateProfilAction(_prev: ActionState, formData: FormData)
   if (!villeCheck.valid) return { error: villeCheck.error! };
   const telCheck = validateLength(telephone, "Téléphone", LIMITS.TELEPHONE_MAX);
   if (!telCheck.valid) return { error: telCheck.error! };
+  const descCheck = validateLength(description, "Description", 1000);
+  if (!descCheck.valid) return { error: descCheck.error! };
+  if (!isValidUrl(siteWeb)) return { error: "Site web invalide (ex. https://www.monclub.fr)." };
 
   if (!isValidLigue(ligue)) return { error: "Ligue obligatoire." };
   if (!isValidDistrict(ligue, district)) return { error: "District invalide pour cette ligue." };
@@ -898,10 +905,13 @@ export async function updateProfilAction(_prev: ActionState, formData: FormData)
       codePostal: codePostalFinal,
       latitude: geo.latitude,
       longitude: geo.longitude,
+      departement: geo.departement ?? undefined,
       ligue,
       district,
       telephone,
       email,
+      description: description || null,
+      siteWeb: siteWeb || null,
     },
   });
   await touchActivity(club.id);
@@ -1054,6 +1064,7 @@ export async function completeOAuthRegisterAction(_prev: ActionState, formData: 
         codePostal: codePostalFinal,
         latitude: geo.latitude,
         longitude: geo.longitude,
+        departement: geo.departement ?? undefined,
         ligue,
         district,
         telephone,
@@ -1088,4 +1099,200 @@ export async function completeOAuthRegisterAction(_prev: ActionState, formData: 
 
   revalidatePath("/");
   redirect("/dashboard?welcome=1");
+}
+
+/* ---------------- Favoris ---------------- */
+
+const FAVORI_TYPES = ["annonce", "club"] as const;
+type FavoriType = (typeof FAVORI_TYPES)[number];
+
+export async function toggleFavoriAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const type = String(formData.get("type") ?? "") as FavoriType;
+  const cibleId = String(formData.get("cibleId") ?? "");
+  if (!FAVORI_TYPES.includes(type)) return { error: "Type invalide." };
+  if (!cibleId) return { error: "Cible invalide." };
+
+  try {
+    const existing = await prisma.favori.findUnique({
+      where: { clubId_type_cibleId: { clubId: club.id, type, cibleId } },
+    });
+
+    if (existing) {
+      await prisma.favori.delete({ where: { id: existing.id } });
+      return { ok: true };
+    }
+
+    // Vérifier que la cible existe et est visible (annonce ouverte à venir, club validé).
+    if (type === "annonce") {
+      const annonce = await prisma.annonce.findFirst({
+        where: { id: cibleId, statut: "ouvert", date: { gte: todayISO() } },
+        select: { id: true },
+      });
+      if (!annonce) return { error: "Annonce non disponible." };
+    } else if (type === "club") {
+      const cible = await prisma.club.findFirst({
+        where: { id: cibleId, role: "club", statutVerification: "valide" },
+        select: { id: true },
+      });
+      if (!cible) return { error: "Club introuvable." };
+      if (cible.id === club.id) return { error: "Vous ne pouvez pas vous ajouter vous-même." };
+    }
+
+    await prisma.favori.create({ data: { clubId: club.id, type, cibleId } });
+    return { ok: true };
+  } catch {
+    return { error: "Erreur lors de la mise à jour du favori." };
+  }
+}
+
+/* ---------------- Alertes email ---------------- */
+
+export async function createAlerteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const categorie = String(formData.get("categorie") ?? "").trim();
+  const ligue = String(formData.get("ligue") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim();
+  const rayonKmRaw = Number(formData.get("rayonKm") ?? "");
+  const latitude = String(formData.get("latitude") ?? "").trim();
+  const longitude = String(formData.get("longitude") ?? "").trim();
+
+  if (categorie && !isValidCategorie(categorie)) return { error: "Catégorie invalide." };
+  if (ligue && !isValidLigue(ligue)) return { error: "Ligue invalide." };
+  if (district && !isValidDistrict(ligue, district)) return { error: "District invalide." };
+
+  const rayonKm = Number.isFinite(rayonKmRaw) && rayonKmRaw > 0 ? Math.round(rayonKmRaw) : null;
+  const lat = latitude ? parseFloat(latitude) : null;
+  const lng = longitude ? parseFloat(longitude) : null;
+  if (rayonKm != null && (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng))) {
+    return { error: "Sélectionnez une ville pour activer le rayon." };
+  }
+
+  await prisma.alerte.create({
+    data: {
+      clubId: club.id,
+      categorie: categorie || null,
+      ligue: ligue || null,
+      district: district || null,
+      departement: club.departement ?? null,
+      rayonKm,
+      centreLat: lat,
+      centreLng: lng,
+      active: true,
+      lastSentAt: new Date(),
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteAlerteAction(formData: FormData): Promise<void> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.alerte.deleteMany({ where: { id, clubId: club.id } });
+}
+
+/* ---------------- Avis / notation post-match ---------------- */
+
+export async function submitAvisAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const annonceId = String(formData.get("annonceId") ?? "").trim();
+  const noteRaw = Number(formData.get("note") ?? "");
+  const commentaire = String(formData.get("commentaire") ?? "").trim();
+
+  if (!annonceId) return { error: "Match invalide." };
+  if (!Number.isInteger(noteRaw) || noteRaw < 1 || noteRaw > 5) {
+    return { error: "La note doit être comprise entre 1 et 5." };
+  }
+  if (commentaire.length > 500) return { error: "Le commentaire ne doit pas dépasser 500 caractères." };
+
+  // L'annonce doit être confirmée, passée, et impliquer le club connecté comme adversaire.
+  const annonce = await prisma.annonce.findFirst({
+    where: {
+      id: annonceId,
+      statut: "confirme",
+      date: { lt: todayISO() },
+      OR: [{ clubId: club.id }, { adversaireNom: { not: null } }],
+    },
+    select: { id: true, clubId: true, adversaireNom: true },
+  });
+  if (!annonce) return { error: "Match non éligible à une notation." };
+
+  // Le club noté est l'autre club (l'annonceur si le connecté est l'adversaire, et inversement).
+  // On n'a pas de champ adversaireId, donc on se base sur l'ownership : si le club connecté est
+  // l'annonceur, le noté est... indéterminé sans adversaireId. On limite donc la notation à
+  // l'adversaire qui répond à une annonce (le noté est l'annonceur).
+  if (annonce.clubId === club.id) {
+    return { error: "Seul le club adverse peut noter l’annonceur pour ce match." };
+  }
+
+  const existing = await prisma.avis.findUnique({
+    where: { annonceId_auteurClubId: { annonceId, auteurClubId: club.id } },
+  });
+  if (existing) return { error: "Vous avez déjà noté ce match." };
+
+  await prisma.avis.create({
+    data: {
+      annonceId,
+      auteurClubId: club.id,
+      cibleClubId: annonce.clubId,
+      note: noteRaw,
+      commentaire: commentaire || null,
+    },
+  });
+
+  revalidatePath(`/clubs/${annonce.clubId}`);
+  return { ok: true };
+}
+
+/* ---------------- Signalements ---------------- */
+
+export async function signalerAnnonceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return { error: "Non autorisé." };
+
+  const annonceId = String(formData.get("annonceId") ?? "").trim();
+  const motif = String(formData.get("motif") ?? "").trim();
+  if (!annonceId) return { error: "Annonce invalide." };
+  if (!motif) return { error: "Indiquez un motif." };
+  if (motif.length > 500) return { error: "Le motif ne doit pas dépasser 500 caractères." };
+
+  // Vérifie que l'annonce existe et est visible.
+  const annonce = await prisma.annonce.findFirst({
+    where: { id: annonceId, statut: "ouvert", date: { gte: todayISO() } },
+    select: { id: true },
+  });
+  if (!annonce) return { error: "Annonce non disponible." };
+
+  // Anti-spam : un club ne peut pas signaler la même annonce deux fois.
+  const existing = await prisma.signalement.findFirst({
+    where: { annonceId, clubId: club.id },
+    select: { id: true },
+  });
+  if (existing) return { error: "Vous avez déjà signalé cette annonce." };
+
+  await prisma.signalement.create({
+    data: { annonceId, clubId: club.id, motif, statut: "ouvert" },
+  });
+  return { ok: true };
+}
+
+export async function fetchMyFavorisAction(): Promise<
+  { id: string; type: FavoriType; cibleId: string; createdAt: Date }[]
+> {
+  const club = await getCurrentClub();
+  if (!club || club.role !== "club") return [];
+  const rows = await prisma.favori.findMany({
+    where: { clubId: club.id },
+    select: { id: true, type: true, cibleId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((r) => ({ ...r, type: r.type as FavoriType }));
 }

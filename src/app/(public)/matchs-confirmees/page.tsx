@@ -138,7 +138,7 @@ export default async function MatchsConfirmesPage({
                 <div className="mt-6 flex flex-wrap items-end justify-between gap-4 text-sm text-muted">
                   <div className="space-y-1">
                     <p>📅 {formatDateLongFR(a.date)} · {a.heure}</p>
-                    <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.ville}</p>
+                    <p>📍 {DOM_EXT_LABEL[dom] ?? dom} · {a.club.departement ? `${a.club.departement} · ` : ""}{a.club.ville}</p>
                   </div>
                   <div className="text-right space-y-1">
                     <p>

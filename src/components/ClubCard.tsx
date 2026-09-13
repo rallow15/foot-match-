@@ -8,6 +8,7 @@ interface Props {
     nom: string;
     ville: string;
     district: string;
+    departement?: string | null;
     ligue: string;
     logoUrl: string | null;
     equipes: { categorie: string; niveau: string | null }[];
@@ -31,12 +32,12 @@ export function ClubCard({ club, distanceKm = null }: Props) {
               {club.nom}
             </h3>
             <p className="mt-1 text-sm text-muted">
-              📍 {club.district} · {club.ville}
+              📍 {club.departement ? `${club.departement} · ` : ""}{club.ville}
               {distanceKm != null && !Number.isNaN(distanceKm) && (
                 <span className="text-muted-2"> · à {Math.round(distanceKm)} km</span>
               )}
             </p>
-            <p className="text-xs text-muted-2">Ligue {club.ligue}</p>
+            <p className="text-xs text-muted-2">Ligue {club.ligue} · {club.district}</p>
           </div>
         </div>
 

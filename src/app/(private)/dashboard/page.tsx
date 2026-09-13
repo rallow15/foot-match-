@@ -1,13 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentClub } from "@/lib/auth";
-import { fetchMyAnnonces, fetchMyEquipes } from "@/lib/queries";
+import { prisma } from "@/lib/db";
+import { fetchMyAnnonces, fetchMyEquipes, fetchMyFavorisWithTargets } from "@/lib/queries";
 import { formatDateLongFR, todayISO } from "@/lib/utils";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
 import { StatutAnnonceBadge, StatutVerifBadge, NiveauBadge } from "@/components/Badges";
 import { EquipeForm } from "@/components/dashboard/EquipeForm";
 import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
 import { ClubAvatar } from "@/components/ClubAvatar";
+import { AnnonceCard } from "@/components/AnnonceCard";
+import { ClubCard } from "@/components/ClubCard";
+import { OnboardingBanner } from "@/components/dashboard/OnboardingBanner";
+import { AvisForm } from "@/components/AvisForm";
+import { AlerteForm } from "@/components/dashboard/AlerteForm";
+import { CalendarView } from "@/components/dashboard/CalendarView";
 import {
   deleteAnnonceAction,
   deleteEquipeAction,
@@ -29,15 +36,39 @@ export default async function DashboardPage({
   const welcome = "welcome" in sp;
   const equipeErr = "equipe_err" in sp;
   const adversaireErr = "adversaire_err" in sp;
+  const noterId = typeof sp.noter === "string" ? sp.noter : undefined;
   const isValide = club.statutVerification === "valide";
 
-  const [equipes, annonces] = await Promise.all([
+  // Formulaire de notation post-match (depuis l’email).
+  let annonceANoter: { id: string; adversaireNom: string | null } | null = null;
+  if (noterId) {
+    annonceANoter = await prisma.annonce.findFirst({
+      where: {
+        id: noterId,
+        statut: "confirme",
+        date: { lt: todayISO() },
+        // Le club connecté n’est pas l’annonceur : seul l’adversaire note l’annonceur.
+        clubId: { not: club.id },
+        adversaireNom: { not: null },
+      },
+      select: { id: true, adversaireNom: true },
+    });
+  }
+
+  const [equipes, annonces, favoris, alertes] = await Promise.all([
     fetchMyEquipes(club.id),
     fetchMyAnnonces(club.id),
+    fetchMyFavorisWithTargets(club.id),
+    prisma.alerte.findMany({
+      where: { clubId: club.id, active: true },
+      select: { id: true, categorie: true, ligue: true, district: true, rayonKm: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const ouvertes = annonces.filter((a) => a.statut === "ouvert");
   const passees = annonces.filter((a) => a.statut !== "ouvert");
+  const hasFavoris = favoris.annonces.length > 0 || favoris.clubs.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -49,9 +80,9 @@ export default async function DashboardPage({
             <p className="eyebrow text-accent">Mon espace</p>
             <h1 className="headline mt-1 text-4xl text-paper">{club.nom}</h1>
             <p className="mt-1 text-sm text-muted">
-              📍 {club.district} · {club.ville} ({club.codePostal}) · {club.telephone} · {club.email}
+              📍 {club.departement ? `${club.departement} · ` : ""}{club.ville} ({club.codePostal}) · {club.telephone} · {club.email}
             </p>
-            <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue}</p>
+            <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue} · {club.district}</p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -101,6 +132,14 @@ export default async function DashboardPage({
         </div>
       )}
 
+      <OnboardingBanner statut={club.statutVerification} />
+
+      {annonceANoter?.adversaireNom && (
+        <div className="mt-6">
+          <AvisForm annonceId={annonceANoter.id} adversaireNom={annonceANoter.adversaireNom} />
+        </div>
+      )}
+
       {/* Stats rapides */}
       <div className="mt-8 grid grid-cols-3 gap-4">
         <div className="card p-4">
@@ -116,6 +155,47 @@ export default async function DashboardPage({
           <p className="mt-1 text-xs text-muted">Annonces confirmées/annulées</p>
         </div>
       </div>
+
+      {/* Favoris */}
+      {hasFavoris && (
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between">
+            <h2 className="headline title-bar text-2xl text-paper">Mes favoris</h2>
+          </div>
+          {favoris.annonces.length > 0 && (
+            <>
+              <p className="mt-4 text-sm text-muted">Annonces sauvegardées</p>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {favoris.annonces.map((a) => (
+                  <li key={a.id}>
+                    <AnnonceCard annonce={a} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {favoris.clubs.length > 0 && (
+            <>
+              <p className="mt-6 text-sm text-muted">Clubs suivis</p>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {favoris.clubs.map((c) => (
+                  <li key={c.id}>
+                    <ClubCard club={c} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Alertes */}
+      <section className="mt-10">
+        <h2 className="headline title-bar text-2xl text-paper">Mes alertes</h2>
+        <div className="mt-4">
+          <AlerteForm alertes={alertes} />
+        </div>
+      </section>
 
       {/* Équipes */}
       <section className="mt-10">
@@ -233,6 +313,13 @@ export default async function DashboardPage({
                       Modifier
                     </Link>
                   )}
+                  <Link
+                    href={`/dashboard/annonces/nouvelle?duplicate=${a.id}`}
+                    className="btn-xs-ghost"
+                    title="Publier à nouveau"
+                  >
+                    Dupliquer
+                  </Link>
                   {a.statut !== "ouvert" && (
                     <ConfirmDeleteForm
                       action={deleteAnnonceAction}
@@ -247,6 +334,15 @@ export default async function DashboardPage({
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <div className="flex items-baseline justify-between">
+          <h2 className="headline title-bar text-2xl text-paper">Calendrier</h2>
+        </div>
+        <div className="mt-4">
+          <CalendarView annonces={annonces} />
         </div>
       </section>
 

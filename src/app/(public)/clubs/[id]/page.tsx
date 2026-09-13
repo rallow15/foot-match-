@@ -1,14 +1,31 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchClubProfileCached as fetchClubProfile } from "@/lib/queries";
+import { fetchClubProfileCached as fetchClubProfile, fetchAvisForClub } from "@/lib/queries";
 import { getCategorie, DOM_EXT_LABEL } from "@/lib/referential";
+import type { Metadata } from "next";
 import { formatDateLongFR, relTime } from "@/lib/utils";
 import { ClubAvatar } from "@/components/ClubAvatar";
 import { NiveauBadge, StatutAnnonceBadge, VerifiedBadge } from "@/components/Badges";
 import { getCurrentClub } from "@/lib/auth";
 import { ClubContactForm } from "@/components/ClubContactForm";
+import { FavoriButton } from "@/components/FavoriButton";
+import { prisma } from "@/lib/db";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const club = await fetchClubProfile(id);
+  if (!club) return { title: "Club introuvable — Matchs Amicaux" };
+  return {
+    title: `${club.nom} — Matchs Amicaux`,
+    description: `Profil du club ${club.nom} à ${club.ville} (${club.district}, Ligue ${club.ligue}). Découvrez ses équipes et ses annonces de matchs amicaux.`,
+  };
+}
 
 // Le header fournit déjà la navigation ; pas de lien retour inutile ici.
 
@@ -31,6 +48,18 @@ export default async function ClubProfilePage({
   const canContact =
     !!me && me.role === "club" && me.statutVerification === "valide" && !isOwn && isValide;
 
+  const isFavori = me && me.role === "club" && !isOwn
+    ? await prisma.favori.findUnique({
+        where: { clubId_type_cibleId: { clubId: me.id, type: "club", cibleId: club.id } },
+        select: { id: true },
+      }).then(Boolean)
+    : false;
+
+  const avis = await fetchAvisForClub(club.id);
+  const noteMoyenne = avis.length > 0
+    ? Math.round((avis.reduce((acc, a) => acc + a.note, 0) / avis.length) * 10) / 10
+    : null;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <Link href="/clubs" className="text-sm text-muted hover:text-paper">← Retour aux clubs</Link>
@@ -48,15 +77,44 @@ export default async function ClubProfilePage({
                   {isValide && <VerifiedBadge />}
                 </div>
                 <p className="mt-2 text-sm text-muted">
-                  📍 {club.district} · {club.ville} ({club.codePostal})
+                  📍 {club.departement ? `${club.departement} · ` : ""}{club.ville} ({club.codePostal})
                 </p>
-                <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue} · Membre {relTime(club.createdAt)}</p>
+                <p className="mt-0.5 text-xs text-muted-2">Ligue {club.ligue} · {club.district} · Membre {relTime(club.createdAt)}</p>
+                {noteMoyenne != null && (
+                  <p className="mt-2 text-sm text-accent">⭐ {noteMoyenne} / 5 · {avis.length} avis</p>
+                )}
                 {!isValide && (
                   <p className="mt-2 text-xs text-gold">Compte en cours de vérification.</p>
                 )}
               </div>
+              {me && me.role === "club" && !isOwn && (
+                <FavoriButton type="club" cibleId={club.id} initial={isFavori} />
+              )}
             </div>
           </section>
+
+          {(club.description || club.siteWeb) && (
+            <section className="card p-6">
+              {club.description && (
+                <>
+                  <p className="eyebrow">À propos</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-paper">{club.description}</p>
+                </>
+              )}
+              {club.siteWeb && (
+                <p className="mt-4">
+                  <a
+                    href={club.siteWeb}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-accent hover:underline"
+                  >
+                    Voir le site du club →
+                  </a>
+                </p>
+              )}
+            </section>
+          )}
 
           {/* Équipes */}
           <section>
@@ -113,6 +171,26 @@ export default async function ClubProfilePage({
               </ul>
             )}
           </section>
+
+          {/* Avis */}
+          {avis.length > 0 && (
+            <section>
+              <h2 className="headline title-bar text-2xl text-paper">Avis</h2>
+              <ul className="mt-4 space-y-3">
+                {avis.map((a) => (
+                  <li key={`${a.auteurClub.nom}-${a.createdAt.toISOString()}`} className="card p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-accent">{"★".repeat(a.note)}{"☆".repeat(5 - a.note)}</span>
+                      <span className="text-xs text-muted-2">· {a.auteurClub.nom}</span>
+                    </div>
+                    {a.commentaire && (
+                      <p className="mt-2 text-sm text-paper">“ {a.commentaire} ”</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         {/* Panneau contact */}
