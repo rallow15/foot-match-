@@ -8,10 +8,12 @@ export const metadata: Metadata = {
     "Retrouvez Matchs Amicaux en un geste sur votre smartphone. Suivez les instructions pour l’ajouter à l’écran d’accueil sous iOS (Safari) ou Android (Chrome).",
 };
 
+const DOMAIN = "www.monmatchamical.fr";
+
 const iosSteps = [
   {
     n: "1",
-    text: "Ouvrez le site **matchs-amicaux.fr** dans l’app **Safari**.",
+    text: `Ouvrez le site **${DOMAIN}** dans l’app **Safari**.`,
   },
   {
     n: "2",
@@ -30,7 +32,7 @@ const iosSteps = [
 const androidSteps = [
   {
     n: "1",
-    text: "Ouvrez le site **matchs-amicaux.fr** dans l’app **Chrome**.",
+    text: `Ouvrez le site **${DOMAIN}** dans l’app **Chrome**.`,
   },
   {
     n: "2",

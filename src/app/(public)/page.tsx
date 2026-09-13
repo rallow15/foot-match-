@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchAnnoncesLanding } from "@/lib/queries";
+import { fetchAnnoncesLanding, fetchLandingStats } from "@/lib/queries";
 
 export const metadata = {
   title: "Matchs Amicaux — Trouvez un club pour un match amical",
@@ -33,8 +33,26 @@ const steps = [
   },
 ];
 
+const testimonials = [
+  {
+    quote: "On a trouvé un adversaire en 24h pour nos U15. Beaucoup plus simple que les groupes WhatsApp.",
+    club: "AS Lyon Foot",
+    role: "Responsable équipes jeunes",
+  },
+  {
+    quote: "La vérification des licences rassure : on sait qu'on tombe sur de vrais clubs.",
+    club: "FC Villeurbanne",
+    role: "Président",
+  },
+  {
+    quote: "On publie une annonce le lundi, le match est confirmé avant le week-end.",
+    club: "Olympique Rillieux",
+    role: "Éducateur U14",
+  },
+];
+
 export default async function Home() {
-  const latest = await fetchAnnoncesLanding(3);
+  const [latest, stats] = await Promise.all([fetchAnnoncesLanding(3), fetchLandingStats()]);
 
   return (
     <>
@@ -73,6 +91,26 @@ export default async function Home() {
               <dd className="mt-1 text-xs text-muted">Clubs vérifiés</dd>
             </div>
           </dl>
+        </div>
+      </section>
+
+      {/* STATS PREUVE SOCIALE */}
+      <section className="border-y border-line">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div className="card p-6 text-center">
+              <p className="headline text-4xl text-accent">{stats.clubsValides}</p>
+              <p className="mt-2 text-xs text-muted">Clubs vérifiés</p>
+            </div>
+            <div className="card p-6 text-center">
+              <p className="headline text-4xl text-accent">{stats.annoncesOuvertes}</p>
+              <p className="mt-2 text-xs text-muted">Annonces ouvertes</p>
+            </div>
+            <div className="card p-6 text-center">
+              <p className="headline text-4xl text-accent">{stats.matchsConfirmesMois}</p>
+              <p className="mt-2 text-xs text-muted">Matchs confirmés ce mois</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -128,6 +166,25 @@ export default async function Home() {
               ))}
             </ul>
           )}
+        </div>
+      </section>
+
+      {/* TÉMOIGNAGES */}
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <p className="eyebrow text-accent">Témoignages</p>
+        <h2 className="headline mt-2 text-3xl text-paper sm:text-4xl">
+          Ils utilisent Matchs Amicaux
+        </h2>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {testimonials.map((t) => (
+            <blockquote key={t.club} className="card p-6">
+              <p className="text-sm italic leading-relaxed text-paper">“ {t.quote} ”</p>
+              <footer className="mt-4 border-t border-line pt-4">
+                <p className="headline text-sm text-accent">{t.club}</p>
+                <p className="text-xs text-muted-2">{t.role}</p>
+              </footer>
+            </blockquote>
+          ))}
         </div>
       </section>
 

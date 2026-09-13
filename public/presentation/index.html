@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Matchs Amicaux — Présentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" />
+    <style>
+      :root {
+        --r-background-color: #0b0f14;
+        --r-main-font: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        --r-heading-font: "Poppins", "Inter", system-ui, sans-serif;
+        --r-heading-color: #f8fafc;
+        --r-main-color: #e2e8f0;
+        --r-link-color: #22c55e;
+        --r-link-color-hover: #4ade80;
+        --accent: #22c55e;
+      }
+      .reveal .slides section {
+        text-align: left;
+        padding: 2rem 3rem;
+      }
+      .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+        font-family: var(--r-heading-font);
+        font-weight: 800;
+        text-transform: none;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      .reveal h1 { font-size: 3.4em; }
+      .reveal h2 { font-size: 2.4em; }
+      .reveal h3 { font-size: 1.6em; color: var(--accent); font-weight: 700; }
+      .reveal p, .reveal li {
+        font-family: var(--r-main-font);
+        font-size: 1em;
+        line-height: 1.8;
+      }
+      .reveal ul { margin-left: 0.2em; margin-top: 1.2em; }
+      .reveal li {
+        margin-bottom: 0.7em;
+        list-style-type: none;
+        position: relative;
+        padding-left: 1.5em;
+      }
+      .reveal li::before {
+        content: "›";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 1.3em;
+        line-height: 1;
+      }
+      .reveal .centered { text-align: center; }
+      .reveal .centered img { margin: 0 auto; }
+      .reveal .small { font-size: 0.85em; color: #94a3b8; }
+      .reveal .accent { color: var(--accent); }
+      .reveal .badge {
+        display: inline-block;
+        background: rgba(34, 197, 94, 0.18);
+        color: var(--accent);
+        padding: 0.4em 1em;
+        border-radius: 999px;
+        font-size: 0.85em;
+        font-weight: 700;
+        font-family: var(--r-heading-font);
+        margin-bottom: 1em;
+        letter-spacing: 0.02em;
+      }
+      .reveal .text-slide {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: center;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .reveal .full-page {
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        padding: 0.5rem;
+      }
+      .reveal .full-page img {
+        max-width: 98vw;
+        max-height: 96vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        object-position: center;
+        border-radius: 18px;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+        border: 2px solid rgba(255,255,255,0.12);
+      }
+      .reveal .controls { color: var(--accent); }
+      .reveal .progress { background: rgba(34, 197, 94, 0.3); color: var(--accent); }
+      .reveal .fragment { opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease; transform: translateY(12px); }
+      .reveal .fragment.visible { opacity: 1; transform: translateY(0); }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section class="centered" data-background-gradient="linear-gradient(135deg, #0b0f14 0%, #111827 100%)">
+          <p class="badge">Plateforme de matchs amicaux</p>
+          <h1>Matchs Amicaux</h1>
+          <p class="fragment">Trouvez, proposez et organisez des matchs amicaux entre clubs amateurs de football.</p>
+          <p class="small fragment">En 5 étapes simples</p>
+        </section>
+
+        <section class="text-slide centered" data-background-gradient="linear-gradient(135deg, #064e3b 0%, #0b0f14 100%)">
+          <p class="badge">Pourquoi Matchs Amicaux ?</p>
+          <h2>Une solution pensée pour les clubs amateurs</h2>
+          <ul>
+            <li class="fragment"><span class="accent">Gagnez du temps</span> — centralisez toutes les demandes de matchs au même endroit, sans plus démarcher club par club</li>
+            <li class="fragment"><span class="accent">Trouvez rapidement</span> — des annonces filtrées par catégorie, niveau, ligue, district et rayon géographique</li>
+            <li class="fragment"><span class="accent">Optimisez votre planning</span> — remplissez les week-ends sans adversaire en quelques clics</li>
+            <li class="fragment"><span class="accent">Restez maître de vos choix</span> — vous choisissez la date, le lieu, la catégorie et le niveau souhaité</li>
+            <li class="fragment"><span class="accent">Évoluez en confiance</span> — chaque club est vérifié par notre équipe via sa licence dirigeant/éducateur</li>
+            <li class="fragment"><span class="accent">Simplifiez la mise en relation</span> — contact direct, message structuré et coordonnées révélées après accord</li>
+            <li class="fragment"><span class="accent">Zéro frais</span> — la plateforme est gratuite pour les clubs : publier, rechercher et contacter ne coûte rien</li>
+          </ul>
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Parcours utilisateur</p>
+          <h2>Le parcours en 5 étapes</h2>
+          <ul>
+            <li class="fragment"><span class="accent">1.</span> Inscrire son club et uploader sa licence</li>
+            <li class="fragment"><span class="accent">2.</span> Créer ses équipes (catégorie, niveau)</li>
+            <li class="fragment"><span class="accent">3.</span> Proposer un match amical</li>
+            <li class="fragment"><span class="accent">4.</span> Rechercher un match correspondant</li>
+            <li class="fragment"><span class="accent">5.</span> Contacter le club, ou trouver un club compatible</li>
+          </ul>
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 1</p>
+          <h2>Inscrire son club</h2>
+          <ul>
+            <li>Formulaire rapide</li>
+            <li>Informations du club : nom, ville, ligue, district</li>
+            <li>Upload de la licence dirigeant/éducateur</li>
+            <li>Vérification par l'équipe admin avant publication</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="02-inscription.png" alt="Page d'inscription" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 2</p>
+          <h2>Créer ses équipes</h2>
+          <ul>
+            <li>Ajoutez chaque équipe de votre club</li>
+            <li>Choisissez la catégorie (U8 à Seniors/Vétérans)</li>
+            <li>Précisez le niveau (départemental, régional, national)</li>
+            <li>Retrouvez toutes vos annonces sur le dashboard</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="03-dashboard.png" alt="Dashboard club" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 3</p>
+          <h2>Proposer un match</h2>
+          <ul>
+            <li>Sélectionnez l'équipe concernée</li>
+            <li>Date, horaire, domicile/extérieur</li>
+            <li>Indiquez si le stade et l'arbitre sont disponibles</li>
+            <li>Ajoutez une note (terrain synthétique, vestiaires, etc.)</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="04-nouvelle-annonce.png" alt="Nouvelle annonce" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 4</p>
+          <h2>Rechercher un match</h2>
+          <ul>
+            <li>Filtres par catégorie, niveau, ligue, district</li>
+            <li>Recherche par ville et rayon</li>
+            <li>Stade disponible, arbitre disponible</li>
+            <li>Liste des annonces ouvertes mises à jour automatiquement</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="05-recherche-match.png" alt="Recherche de match" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 5a</p>
+          <h2>Contacter le club annonceur</h2>
+          <ul>
+            <li>Voir toutes les informations du match</li>
+            <li>Envoyer un message au club</li>
+            <li>Les coordonnées (téléphone/email) sont révélées après le contact</li>
+            <li>Le match passe ensuite en statut "confirmé"</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="06-detail-annonce.png" alt="Détail d'une annonce" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 5b</p>
+          <h2>Aucun match disponible ?</h2>
+          <ul>
+            <li>Si la recherche ne retourne rien, la plateforme suggère des clubs compatibles</li>
+            <li>Même catégorie, même niveau, même zone géographique</li>
+            <li>Accédez à leur profil et demandez une rencontre directement</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="07-clubs.png" alt="Liste des clubs" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Étape 5c</p>
+          <h2>Demander une rencontre</h2>
+          <ul>
+            <li>Profil du club avec ses équipes</li>
+            <li>Voir la composition (catégories / niveaux)</li>
+            <li>Bouton "Contacter le club"</li>
+            <li>Envoi d'un message + révélation des coordonnées</li>
+          </ul>
+        </section>
+
+        <section class="full-page">
+          <img src="08-detail-club.png" alt="Profil d'un club" />
+        </section>
+
+        <section class="text-slide">
+          <p class="badge">Modération</p>
+          <h2>Validation par l'équipe admin</h2>
+          <ul>
+            <li>Validation manuelle des licences dirigeant/éducateur</li>
+            <li>Refus motivé en cas de document invalide</li>
+            <li>Suppression de compte si nécessaire</li>
+            <li>Statistiques : clubs en attente, validés, total</li>
+          </ul>
+          <p class="small">L'admin s'assure que seuls des clubs légitimes peuvent publier et contacter d'autres clubs.</p>
+        </section>
+
+        <section class="centered" data-background-gradient="linear-gradient(135deg, #0b0f14 0%, #064e3b 100%)">
+          <h2>Prêt à organiser votre prochain match amical ?</h2>
+          <p class="fragment accent">Inscrivez votre club, créez vos équipes et publiez votre première annonce.</p>
+          <p class="small fragment">www.monmatchamical.fr</p>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        slideNumber: "c/t",
+        controls: true,
+        progress: true,
+        center: true,
+        transition: "slide",
+        backgroundTransition: "fade",
+      });
+    </script>
+  </body>
+</html>

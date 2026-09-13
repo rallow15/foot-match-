@@ -112,6 +112,17 @@ export function validatePassword(value: string): ValidationResult {
   return { valid: true };
 }
 
+// --- URL simple : http(s)://... ---
+export function isValidUrl(value: string): boolean {
+  if (!value) return true; // optionnel
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 // --- Longueur de chaîne ---
 export function validateLength(value: string, field: string, max: number): ValidationResult {
   if (value.length > max) {

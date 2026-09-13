@@ -291,10 +291,98 @@ export interface PublicContactMailData {
   source?: string; // page ou contexte d'origine (optionnel)
 }
 
+export interface NotationMailData {
+  to: string;
+  nom: string;
+  adversaireNom: string;
+  annonceLabel: string;
+  dashboardUrl: string;
+}
+
+export interface AlerteDigestMailData {
+  to: string;
+  nom: string;
+  count: number;
+  annonces: { label: string; url: string }[];
+}
+
+export interface RappelMatchMailData {
+  to: string;
+  nom: string;
+  adversaireNom: string;
+  annonceLabel: string;
+  annonceUrl: string;
+}
+
 // Email "formulaire de contact public" : relaie un message générique envoyé par
 // un visiteur (connecté ou non) vers l'adresse de contact de la plateforme.
 // L'adresse destinataire est configurable via CONTACT_EMAIL (défaut :
 // matchamicalamateur@gmail.com).
+export async function sendRappelMatch(data: RappelMatchMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const subject = `Rappel : votre match amical dans 3 jours — ${data.annonceLabel}`;
+  const text = `Bonjour ${data.nom},
+
+Votre match amical contre « ${data.adversaireNom} » (${data.annonceLabel}) aura lieu dans 3 jours.
+
+Retrouvez les détails et les coordonnées depuis votre espace :
+${data.annonceUrl}
+
+Bonne préparation,
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    fallbackLog("RAPPEL MATCH");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}
+
+export async function sendAlerteDigest(data: AlerteDigestMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const subject = `${data.count} nouvelle${data.count > 1 ? "s" : ""} annonce${data.count > 1 ? "s" : ""} correspondant${data.count > 1 ? "s" : ""} à votre alerte`;
+  const lines = data.annonces.map((a) => `- ${a.label}\n  ${a.url}`).join("\n");
+  const text = `Bonjour ${data.nom},
+
+Voici les nouvelles annonces du jour qui correspondent à votre alerte :
+
+${lines}
+
+Gérez vos alertes depuis votre espace club.
+
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    fallbackLog("ALERTE DIGEST");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}
+
+export async function sendNotationEmail(data: NotationMailData) {
+  const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
+  const subject = `Notez votre match amical — ${data.annonceLabel}`;
+  const text = `Bonjour ${data.nom},
+
+Votre match amical contre « ${data.adversaireNom} » (${data.annonceLabel}) a eu lieu récemment.
+
+Aidez la communauté en notant l’expérience (ponctualité, fair-play, organisation) :
+${data.dashboardUrl}
+
+La notation prend 10 secondes et reste visible sur le profil du club adversaire.
+
+— Matchs Amicaux`;
+
+  const t = transporter();
+  if (!t) {
+    fallbackLog("NOTATION");
+    return;
+  }
+  await t.sendMail({ from, to: data.to, subject, text });
+}
+
 export async function sendPublicContactEmail(data: PublicContactMailData) {
   const from = process.env.SMTP_FROM ?? "Matchs Amicaux <no-reply@matchs-amicaux.local>";
   const to = process.env.CONTACT_EMAIL ?? "matchamicalamateur@gmail.com";

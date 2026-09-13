@@ -14,7 +14,6 @@ model Club {
   codePostal          String
   latitude            Float
   longitude           Float
-  departement         String?
   ligue               String
   district            String
   telephone           String
@@ -36,6 +35,7 @@ model Club {
   description         String?              @db.VarChar(1000)
   onboardingSeenAt    DateTime?
   siteWeb             String?
+  departement         String?
   alertes             Alerte[]
   annonces            Annonce[]            @relation("AnnoncePar")
   avisDonnes          Avis[]               @relation("AvisAuteur")
@@ -174,19 +174,19 @@ model Avis {
 }
 
 model Alerte {
-  id         String    @id @default(cuid())
-  clubId     String
-  categorie  String?
+  id          String    @id @default(cuid())
+  clubId      String
+  categorie   String?
   ligue       String?
   district    String?
-  departement String?
   rayonKm     Int?
-  centreLat  Float?
-  centreLng  Float?
-  lastSentAt DateTime?
-  active     Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  club       Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  centreLat   Float?
+  centreLng   Float?
+  lastSentAt  DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  departement String?
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@index([clubId])
   @@index([active])

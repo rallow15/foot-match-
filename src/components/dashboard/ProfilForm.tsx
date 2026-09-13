@@ -13,6 +13,8 @@ interface ClubData {
   district: string;
   telephone: string;
   email: string;
+  description?: string | null;
+  siteWeb?: string | null;
 }
 
 interface Props {
@@ -29,6 +31,8 @@ export function ProfilForm({ club }: Props) {
   const [district, setDistrict] = useState(club.district);
   const [telephone, setTelephone] = useState(club.telephone);
   const [email, setEmail] = useState(club.email);
+  const [description, setDescription] = useState(club.description ?? "");
+  const [siteWeb, setSiteWeb] = useState(club.siteWeb ?? "");
 
   const districts = ligue ? districtsForLigue(ligue) : [];
 
@@ -125,6 +129,34 @@ export function ProfilForm({ club }: Props) {
             className="input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor="profil-description">Description du club (optionnel)</label>
+          <textarea
+            id="profil-description"
+            name="description"
+            rows={4}
+            className="input"
+            placeholder="Présentez votre club en quelques lignes : histoire, valeurs, installations…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-muted-2">Max. 1000 caractères</p>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor="profil-siteWeb">Site web ou page Facebook (optionnel)</label>
+          <input
+            id="profil-siteWeb"
+            name="siteWeb"
+            type="url"
+            className="input"
+            placeholder="https://www.monclub.fr"
+            value={siteWeb}
+            onChange={(e) => setSiteWeb(e.target.value)}
           />
         </div>
       </div>
